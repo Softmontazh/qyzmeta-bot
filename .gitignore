@@ -1,0 +1,89 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+
+# Env files
+.env
+.env.*
+
+# Byte-compiled / optimized / DLL files
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.manifest
+*.spec
+
+# Virtual environment
+venv/
+env/
+.venv/
+.env/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Icon?
+desktop.ini
+
+# Logs and local database
+*.log
+*.sqlite3
+*.db
+*.pid
+
+# Test and coverage
+.coverage
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+htmlcov/
+.pytest_cache/
+
+# Tools
+pip-wheel-metadata/
+__pypackages__/
+
+# MyPy
+.mypy_cache/
+
+# Cache
+.cache/
+*.bak
+*.swp
+*.tmp
+
+# PyInstaller
+*.spec
+
+# Output files
+structure.txt
+print_tree.py
+
+# Local postgres dumps/backups
+*.dump
+*.backup
+
+# Docs build
+/docs/_build/
+
+# Ignore compiled Python extensions
+*.c
+*.cpp
+*.h
+*.ipynb_checkpoints
+
+# Markdown preview local artifacts
+*.preview.html
