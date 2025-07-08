@@ -2,12 +2,16 @@
 # database/models/model_offer.py
 
 import uuid
-from datetime import datetime
-from sqlalchemy import Integer, BigInteger, String, Text, DateTime, ForeignKey
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Integer, BigInteger, String, Text, ForeignKey, Enum
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID
+from typing import TYPE_CHECKING
 
 from database.models.model_base import Base
+from database.enums.offer_enums import OfferStatus
+
+if TYPE_CHECKING:
+    from database.models.model_user_jk import UserJK
 
 
 class Offer(Base):
@@ -39,3 +43,11 @@ class Offer(Base):
     user_jk_id: Mapped[int] = mapped_column(
         Integer, ForeignKey("user_jk.id"), nullable=False, index=True
     )
+
+    # Статус заявки (nullable для совместимости со старыми данными)
+    status: Mapped[OfferStatus] = mapped_column(
+        Enum(OfferStatus), default=OfferStatus.ACTIVE, nullable=True, index=True
+    )
+
+    # Связи
+    user_jk: Mapped["UserJK"] = relationship("UserJK", back_populates="offers")

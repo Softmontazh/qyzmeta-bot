@@ -103,7 +103,7 @@ async def check_to_addedit_lot(
     can_add, current_count, limit = await check_user_lot_limit(user, session)
     if not can_add:
         await send_func(
-            f"⚠️ Вы уже добавили {current_count} из {limit} допустимых лотов по вашей роли <b>{user.role.value}</b>.\n\n"
+            f"⚠️ Вы уже добавили {current_count} из {limit} допустимых лотов по вашей роли <b>{user.role.get_russian_name()}</b>.\n\n"
             "Чтобы получить больше возможностей:\n"
             "• удалите или отредактируйте существующие лоты\n"
             "• или обратитесь в поддержку: @LotBoxSup",

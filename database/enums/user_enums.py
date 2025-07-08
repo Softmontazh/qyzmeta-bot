@@ -22,3 +22,19 @@ class UserRole(str, Enum):
     MANAGER = "manager"
     SUPPORT = "support"
     PARTNER = "partner"
+
+    def get_russian_name(self):
+        """Возвращает русское название роли"""
+        role_names = {
+            "creator": "Создатель",
+            "owner": "Владелец",
+            "guest": "Гость",
+            "user": "Резидент",
+            "admin": "Администратор",
+            "superadmin": "Суперадминистратор",
+            "moderator": "Модератор",
+            "manager": "Менеджер",
+            "support": "Поддержка",
+            "partner": "Партнер"
+        }
+        return role_names.get(self.value, self.value)

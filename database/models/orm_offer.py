@@ -3,20 +3,27 @@
 
 from sqlalchemy import select, update, delete, desc
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 from database.models.model_offer import Offer
+from database.models.model_user_jk import UserJK
+from database.models.model_jk import JK
+from database.enums.offer_enums import OfferStatus
 from typing import Optional, List
 
 
 async def orm_add_offer(session: AsyncSession, data: dict) -> Offer:
     """Добавляет новую заявку в базу данных."""
-    offer = Offer(
-        category=data.get("category"),
-        title=data.get("title"),
-        description=data.get("description"),
-        media_id=data.get("media_id"),
-        user_id=data.get("user_id"),
-        user_jk_id=data.get("user_jk_id"),
-    )
+    offer_data = {
+        "category": data.get("category"),
+        "title": data.get("title"),
+        "description": data.get("description"),
+        "media_id": data.get("media_id"),
+        "user_id": data.get("user_id"),
+        "user_jk_id": data.get("user_jk_id"),
+        "status": data.get("status", OfferStatus.ACTIVE),  # Устанавливаем ACTIVE по умолчанию
+    }
+    
+    offer = Offer(**offer_data)
     session.add(offer)
     await session.flush()
     return offer
@@ -81,4 +88,64 @@ async def orm_get_offers_by_category(
     
     query = query.order_by(desc(Offer.created_at)).limit(limit)
     result = await session.execute(query)
+    return result.scalars().all()
+
+
+async def orm_get_offers_by_user(
+    session: AsyncSession, user_id: int, limit: int = 50
+) -> List[Offer]:
+    """Получает все заявки пользователя с полной информацией о ЖК."""
+    result = await session.execute(
+        select(Offer)
+        .options(
+            selectinload(Offer.user_jk).selectinload(UserJK.jk)
+        )
+        .where(Offer.user_id == user_id)
+        .where((Offer.status != OfferStatus.ARCHIVED) | (Offer.status.is_(None)))
+        .order_by(desc(Offer.created_at))
+        .limit(limit)
+    )
+    return result.scalars().all()
+
+
+async def orm_archive_offer(session: AsyncSession, offer_id: int) -> bool:
+    """Архивирует заявку (меняет статус на ARCHIVED)."""
+    result = await session.execute(
+        update(Offer)
+        .where(Offer.id == offer_id)
+        .values(status=OfferStatus.ARCHIVED)
+    )
+    return result.rowcount > 0
+
+
+async def orm_get_offer_by_uuid(session: AsyncSession, offer_uuid: str) -> Optional[Offer]:
+    """Получает заявку по UUID."""
+    result = await session.execute(select(Offer).where(Offer.uuid == offer_uuid))
+    return result.scalar_one_or_none()
+
+
+async def orm_archive_offer_by_uuid(session: AsyncSession, offer_uuid: str) -> bool:
+    """Архивирует заявку по UUID (меняет статус на ARCHIVED)."""
+    result = await session.execute(
+        update(Offer)
+        .where(Offer.uuid == offer_uuid)
+        .values(status=OfferStatus.ARCHIVED)
+    )
+    return result.rowcount > 0
+
+
+async def orm_get_active_offers_by_user(
+    session: AsyncSession, user_id: int, limit: int = 50
+) -> List[Offer]:
+    """Получает только активные заявки пользователя."""
+    result = await session.execute(
+        select(Offer)
+        .options(
+            selectinload(Offer.user_jk).selectinload(UserJK.jk)
+        )
+        .where(Offer.user_id == user_id)
+        .where((Offer.status != OfferStatus.ARCHIVED) | (Offer.status.is_(None)))
+        .order_by(desc(Offer.created_at))
+        .limit(limit)
+    )
     return result.scalars().all()

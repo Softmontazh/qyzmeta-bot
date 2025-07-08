@@ -1,7 +1,12 @@
 from sqlalchemy import Integer, BigInteger, ForeignKey, String, UniqueConstraint
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import TYPE_CHECKING
 
 from database.models.model_base import Base
+
+if TYPE_CHECKING:
+    from database.models.model_jk import JK
+    from database.models.model_offer import Offer
 
 
 class UserJK(Base):
@@ -29,6 +34,10 @@ class UserJK(Base):
 
     # Флаг, указывающий, является ли пользователь Службой ЖК
     is_service: Mapped[bool] = mapped_column(default=False, nullable=True)
+
+    # Связи
+    jk: Mapped["JK"] = relationship("JK", back_populates="user_jks")
+    offers: Mapped[list["Offer"]] = relationship("Offer", back_populates="user_jk")
 
     # Уникальность пары пользователь-ЖК
     __table_args__ = (

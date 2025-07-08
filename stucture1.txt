@@ -59,6 +59,3 @@ qyzmeta-bot/
 │   ├── help.py
 │   ├── privacy_policy.py
 │   └── restricted_words.py
-│
-└── utils/
-    └── utils.py

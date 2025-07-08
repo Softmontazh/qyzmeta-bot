@@ -39,11 +39,13 @@ from database.models.model_user_jk import UserJK
 from static.privacy_policy import privacy_policy_text as policy_text
 from static.about_bot import about_bot_text as about_bot
 from static.help import help_text
+from static.support import support_text
 
 from filters.chat_types import ChatTypeFilter
 from keyboards.reply import MAIN_KB, get_keyboard
 from keyboards.inline_for_lot import get_btns_control_lots
 from handlers.fsm.add_offer_fsm import add_offer_router
+from handlers.fsm.my_offers_fsm import my_offers_router
 from handlers.fsm.add_jk_fsm import add_jk_router
 from handlers.fsm.add_lot_fsm import add_lot_router
 from handlers.fsm.search_lot_fsm import search_lot_router
@@ -55,6 +57,7 @@ user_private_router.include_router(add_jk_router)
 user_private_router.include_router(add_lot_router)
 user_private_router.include_router(search_lot_router)
 user_private_router.include_router(add_offer_router)
+user_private_router.include_router(my_offers_router)
 user_private_router.include_router(user_to_jk_router)
 
 NAVIGATION_KB = get_keyboard(
@@ -242,7 +245,7 @@ async def help_cmd(message: Message):
 async def settings_cmd(message: Message):
     await message.answer(
         "⚙️ Настройки бота пока не реализованы, но скоро будут добавлены!\n\n"
-        "Если у тебя есть предложения или пожелания, напиши в поддержку бота @qyzmetasup",
+        "Если у тебя есть предложения или пожелания, напиши в поддержку бота @lotboxsup",
         parse_mode=ParseMode.MARKDOWN,
     )
 
@@ -251,7 +254,7 @@ async def settings_cmd(message: Message):
 @user_private_router.message(F.text.lower().contains("поддержка"))
 @user_private_router.message(Command("support"))
 async def support_cmd(message: Message):
-    await message.answer(about_bot, parse_mode=ParseMode.MARKDOWN)
+    await message.answer(support_text, parse_mode=ParseMode.MARKDOWN)
 
 
 # Обработчик команды /policy
@@ -259,6 +262,24 @@ async def support_cmd(message: Message):
 @user_private_router.message(Command("policy"))
 async def policy_cmd(message: Message):
     await message.answer(policy_text, parse_mode=ParseMode.MARKDOWN)
+
+
+# Обработчик кнопки "Главное меню"
+@user_private_router.message(
+    or_f(
+        F.text.lower().contains("главное меню"),
+        F.text == "🏠 Главная",
+        F.text == "Главное меню 🏠",
+        Command("main_menu")
+    )
+)
+async def main_menu_cmd(message: Message, state: FSMContext):
+    """Переход в главное меню"""
+    await state.clear()  # Очищаем состояние FSM
+    await message.answer(
+        "🏠 Главное меню",
+        reply_markup=MAIN_KB
+    )
 
 
 # Ввод номера телефона
@@ -330,60 +351,6 @@ async def get_contact(message: Message, bot: Bot, session: AsyncSession):
         ),
     )
 
-
-# Обработчик "Мои заявки"
-@user_private_router.message(F.text.lower().contains("мои заявки"))
-@user_private_router.message(Command("my_offers"))
-async def my_requests_cmd(message: Message, session: AsyncSession):
-    user_id = message.from_user.id
-    user = await orm_get_user_by_id(session, user_id)
-
-    # Проверяем, зарегистрирован ли пользователь
-    if not user:
-        await message.answer(
-            "Вы не зарегистрированы в системе."
-            "Для начала отправьте свой номер телефона, чтобы зарегистрироваться.",
-            reply_markup=get_keyboard(
-                "Отправить номер 📞",
-                request_contact=0,
-                placeholder="нажми кнопку",
-                sizes=(1, 1),
-            ),
-        )
-        return
-
-    # Получаем заявки (лоты) пользователя
-    lots = await orm_get_lots_by_user(session, user_id=user_id)
-
-    # Если у пользователя нет заявок, отправляем сообщение
-    if not lots:
-        await message.answer("У Вас пока нет заявок. Добавь свою первую заявку! 📝")
-        return
-
-    # Формируем список заявок для отображения
-    for lot in lots:
-        await message.answer_photo(
-            lot.image_id,
-            caption=as_section(
-                f"{lot.type_lot}\n",
-                f"{lot.offer_type.value}\n",
-                f"{lot.name}\n",
-                f"-" * 24 + "\n",
-                f"{round(lot.price, 0):,} тг.".replace(",", " "),
-                f"\n\n{lot.city}\n",
-                f"{lot.phone}\n\n",
-                Italic(f"Описание: \n{lot.description}\n"),
-                Italic(f"\n\nСтатус заявки: {lot.status.value}"),
-                Italic(f"\nВидимость заявки: {lot.visibility.value}"),
-                Italic(f"\nПубликуется до: {lot.expires_at.strftime('%d.%m.%Y')}"),
-            ).as_html(),
-            parse_mode="HTML",
-            reply_markup=get_btns_control_lots(
-                lot_id=lot.id,
-                status=lot.status,
-                user_role=user.role,
-            ),
-        )
 
 
 # Обработчик "Мой дом"
@@ -493,53 +460,52 @@ async def unlink_jk_handler(callback: CallbackQuery, session: AsyncSession):
 #     # Здесь можно добавить логику для сбора данных заявки
 
 
-# @user_private_router.message(F.text.lower().contains("мой профиль"))
-# @user_private_router.message(Command("my_profile"))
-# async def my_profile_cmd(message: Message, session: AsyncSession):
-#     user_id = message.from_user.id
-#     user = await orm_get_user_by_id(session, user_id)
+@user_private_router.message(F.text.lower().contains("мой профиль"))
+@user_private_router.message(Command("my_profile"))
+async def my_profile_cmd(message: Message, session: AsyncSession):
+    user_id = message.from_user.id
+    user = await orm_get_user_by_id(session, user_id)
 
-#     # Проверяем, зарегистрирован ли пользователь
-#     if not user:
-#         await message.answer(
-#             "Вы не зарегистрированы в системе."
-#             "Чтобы зарегистрироваться, отправьте свой номер телефона.",
-#             reply_markup=get_keyboard(
-#                 "Отправить номер 📞",
-#                 request_contact=0,
-#                 placeholder="нажми кнопку",
-#                 sizes=(1, 1),
-#             ),
-#         )
-#         return
+    # Проверяем, зарегистрирован ли пользователь
+    if not user:
+        await message.answer(
+            "Вы не зарегистрированы в системе."
+            "Чтобы зарегистрироваться, отправьте свой номер телефона.",
+            reply_markup=get_keyboard(
+                "Отправить номер 📞",
+                request_contact=0,
+                placeholder="нажми кнопку",
+                sizes=(1, 1),
+            ),
+        )
+        return
 
-# # Отправляем информацию о пользователе
+    # Отправляем информацию о пользователе
+    text = (
+        f"Ваш профиль:\n\n"
+        f"Имя: {user.first_name}\n"
+        f"Номер телефона: {user.phone}\n"
+        f"Роль: {user.role.get_russian_name()}\n\n"
+        f"Ваши Жилищные Комплексы: {len(await orm_get_jks_by_user_id(session, user_id))}\n\n"
+    )
+    text_jks = await orm_get_jks_by_user_id(session, user_id)
+    if text_jks:
+        text += "Ваши ЖК:\n"
+        for jk, user_jk in text_jks:
+            text += f"- {jk.name}, {jk.city}, {jk.street}, {jk.house}, {jk.block or ''}, {user_jk.appartment}\n"
+    else:
+        text += "У вас нет привязанных ЖК.\n"
 
-# text = (
-#     f"Ваш профиль:\n\n"
-#     f"Имя: {user.first_name}\n"
-#     f"Номер телефона: {user.phone}\n"
-#     f"Роль: {user.role.value}\n\n"
-#     f"Ваши Жилищные Комплексы: {len(await orm_get_jks_by_user_id(session, user_id))}\n\n"
-# )
-# text_jks = await orm_get_jks_by_user_id(session, user_id)
-# if text_jks:
-#     text += "Ваши ЖК:\n"
-#     for jk, user_jk in text_jks:
-#         text += f"- {jk.name}, {jk.city}, {jk.street}, {jk.house}, {jk.block or ''}, {user_jk.appartment}\n"
-# else:
-#     text += "У вас нет привязанных ЖК.\n"
-
-# await message.answer(
-#     text,
-#     parse_mode=ParseMode.MARKDOWN,
-#     reply_markup=get_keyboard(
-#         "Удалить профиль ❌",
-#         "Главное меню 🏠",
-#         placeholder="User Profile Menu",
-#         sizes=(1, 1),
-#     ),
-# )
+    await message.answer(
+        text,
+        parse_mode=ParseMode.MARKDOWN,
+        reply_markup=get_keyboard(
+            "Удалить профиль ❌",
+            "Главное меню 🏠",
+            placeholder="User Profile Menu",
+            sizes=(1, 1),
+        ),
+    )
 
 
 # Обработчик команды "Удалить профиль"

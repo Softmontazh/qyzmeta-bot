@@ -1,8 +1,12 @@
 import uuid
 from sqlalchemy import BigInteger, Integer, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from typing import TYPE_CHECKING
 
 from database.models.model_base import Base
+
+if TYPE_CHECKING:
+    from database.models.model_user_jk import UserJK
 
 
 class JK(Base):
@@ -28,6 +32,9 @@ class JK(Base):
     image_id: Mapped[str] = mapped_column(String(100), nullable=True)
 
     creator_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
+
+    # Связи
+    user_jks: Mapped[list["UserJK"]] = relationship("UserJK", back_populates="jk")
 
     @property
     def full_address(self) -> str:

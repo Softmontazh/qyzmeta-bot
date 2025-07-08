@@ -32,7 +32,13 @@ class DataBaseSession(BaseMiddleware):
     ) -> Any:
         async with self.session_pool() as session:
             data["session"] = session
-            return await handler(event, data)
+            try:
+                result = await handler(event, data)
+                await session.commit()  # Автоматически коммитим изменения
+                return result
+            except Exception as e:
+                await session.rollback()  # Откатываем при ошибке
+                raise e
 
 
 # class CounterMiddleware(BaseMiddleware):
