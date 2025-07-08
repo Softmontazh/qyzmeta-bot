@@ -304,20 +304,20 @@ erDiagram
 
 ---
 
-## 🤝 Вклад в проект
+## 🤝 Команда разработки
 
-Проект находится в активной разработке. Мы приветствуем:
-- 🐛 Отчеты об ошибках
-- 💡 Предложения по улучшению
-- 📖 Улучшение документации
-- 🧪 Тестирование функционала
+Проект находится в активной разработке командой **ТОО "СОФТМОНТАЖ"**. 
 
-### Процесс разработки
-1. Fork репозитория
-2. Создайте feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit изменения (`git commit -m 'Add amazing feature'`)
-4. Push в branch (`git push origin feature/amazing-feature`)
-5. Создайте Pull Request
+### Внутренние процессы:
+- 🐛 Багтрекинг через внутренние системы
+- 💡 Предложения по улучшению от команды
+- 📖 Внутренняя документация и стандарты
+- 🧪 Непрерывное тестирование и QA
+
+### Для внешних партнеров:
+Заинтересованы в сотрудничестве? Свяжитесь с нами:
+- 📧 **Коммерческие вопросы**: info@softmontazh.kz
+- 💬 **Техническое партнерство**: [@bySpecialist](https://t.me/bySpecialist)
 
 ---
 
@@ -363,119 +363,21 @@ Copyright (c) 2025, ТОО "СОФТМОНТАЖ" (LLP Softmontazh)
 - 🌐 **Веб-сайт**: *В разработке*
 - 📍 **Местоположение**: Казахстан
 
-### Техническая поддержка
+### Техническая поддержка и разработка
 - 🆘 **Поддержка**: [@LotBoxSup](https://t.me/LotBoxSup)
-- 📋 **Issues**: [GitHub Issues](https://github.com/Softmontazh/qyzmeta-bot/issues)
+- 📋 **Issues**: Внутренний трекер (приватный доступ)
+- 🔧 **Разработка**: Команда ТОО "СОФТМОНТАЖ"
 
 ---
 
 <div align="center">
 
-**⭐ Поставьте звезду, если проект вам понравился!**
+**🔒 Приватный репозиторий ТОО "СОФТМОНТАЖ"**
 
-*Сделано с ❤️ в Казахстане*
+*Сделано с ❤️ в Казахстане для цифровизации ЖКХ*
 
-![Visitors](https://visitor-badge.laobi.icu/badge?page_id=Softmontazh.qyzmeta-bot)
+---
+
+**Статус проекта**: 🚧 **В активной разработке** | **MVP готов к тестированию**
 
 </div>
-│   ├── enums/
-│   │   ├── lot_enums.py
-│   │   └── user_enums.py
-│   └── models/
-│       ├── __init__.py
-│       ├── model_base.py
-│       ├── model_jk.py
-│       ├── model_lot.py
-│       ├── model_lot_limit.py
-│       ├── model_user.py
-│       ├── model_user_jk.py
-│       ├── orm_jk.py
-│       ├── orm_lot.py
-│       ├── orm_user.py
-│       └── orm_user_jk.py
-│
-├── filters/
-│   └── chat_types.py
-│
-├── handlers/
-│   ├── admin_private.py
-│   ├── fsm/
-│   │   ├── add_jk_fsm.py
-│   │   ├── add_lot_fsm.py
-│   │   ├── search_lot_fsm.py
-│   │   └── user_to_jk_fsm.py
-│   ├── user_group.py
-│   └── user_private.py
-│
-├── keyboards/
-│   ├── inline.py
-│   ├── inline_for_jk.py
-│   ├── inline_for_lot.py
-│   └── reply.py
-│
-├── middlewares/
-│   └── db.py
-│
-├── services/
-│   ├── lot_service.py
-│   └── user_service.py
-│
-├── static/
-│   ├── about_bot.py
-│   ├── help.py
-│   ├── privacy_policy.py
-│   └── restricted_words.py
-│
-├── utils/
-│   └── utils.py
-│
-├── requirements.txt
-├── structure.txt
-└── print_tree.py
-```
-
----
-
-## 🚀 Установка и запуск (dev-режим)
-
-1. Установите зависимости:
-
-```bash
-pip install -r requirements.txt
-```
-
-2. Создайте файл `.env` со следующими переменными окружения:
-
-```
-BOT_TOKEN=ваш_токен_бота
-DATABASE_URL=postgresql+asyncpg://user:password@localhost:5432/qyzmeta
-```
-
-3. Запустите бота:
-
-```bash
-python app.py
-```
-
-> 💡 Убедитесь, что PostgreSQL запущен и база данных создана.
-
----
-
-## 🔐 Лицензия
-
-**Qyzmeta-Bot** является коммерческим программным обеспечением. Все права защищены.  
-Использование, копирование, распространение и модификация без письменного разрешения запрещены.
-
-📧 По вопросам лицензирования, интеграции или сотрудничества:  
-**info@softmontazh.kz**
-
----
-
-## 🧱 Разработано
-
-Проект разработан **ТОО «Софтмонтаж»** в рамках платформы **LotBox**  
-Цель проекта — формирование единной цифровой платформы сферы ЖКХ
-
-**Версия:** `0.1.0-dev`  
-**Проектная платформа:** `LotBox`  
-**Автор:** Alexandr Khvan
