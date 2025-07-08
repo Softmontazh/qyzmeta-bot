@@ -57,3 +57,31 @@ def unlink_keyboard(id_user_jk: int) -> InlineKeyboardMarkup:
             ]
         ]
     )
+
+
+""" Функция для создания клавиатуры управления ЖК """
+
+
+def get_jk_management_keyboard(jk_id: int) -> InlineKeyboardMarkup:
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="✏️ Редактировать", 
+                    callback_data=f"edit_jk:{jk_id}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="🗑️ Удалить", 
+                    callback_data=f"delete_jk:{jk_id}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="◀️ Назад", 
+                    callback_data="back_to_jk_list"
+                )
+            ]
+        ]
+    )

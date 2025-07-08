@@ -30,6 +30,8 @@ class JK(Base):
     id_uk: Mapped[int] = mapped_column(BigInteger, nullable=True, index=True)
 
     image_id: Mapped[str] = mapped_column(String(100), nullable=True)
+    # BUS_ID для общего доступа к изображению между ботами платформы
+    bus_image_id: Mapped[str] = mapped_column(String(100), nullable=True)
 
     creator_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
 

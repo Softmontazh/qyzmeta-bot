@@ -4,7 +4,6 @@
 import uuid
 from sqlalchemy import Integer, BigInteger, String, Text, ForeignKey, Enum
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from sqlalchemy.dialects.postgresql import UUID
 from typing import TYPE_CHECKING
 
 from database.models.model_base import Base
@@ -21,7 +20,7 @@ class Offer(Base):
 
     # UUID для API
     uuid: Mapped[str] = mapped_column(
-        UUID(as_uuid=False), default=lambda: str(uuid.uuid4()), nullable=False
+        String(36), default=lambda: str(uuid.uuid4()), nullable=False
     )
 
     # Категория заявки (по индексу для поиска)

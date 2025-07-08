@@ -186,10 +186,16 @@ async def set_description(message: Message, state: FSMContext):
     await state.update_data(description=description)
     await state.set_state(AddOffer.set_media)
 
+    # Создаем инлайн-клавиатуру с кнопкой "Пропустить"
+    skip_media_keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="⏭️ Пропустить", callback_data="skip_media")]
+    ])
+
     await message.answer(
         "✅ Описание сохранено.\n\n"
         "📸 Если хотите, прикрепите фото или видео к заявке.\n"
-        "Или напишите 'пропустить' для перехода к подтверждению."
+        "Или нажмите кнопку ниже для перехода к подтверждению.",
+        reply_markup=skip_media_keyboard
     )
 
 
@@ -214,6 +220,27 @@ async def set_media(message: Message, state: FSMContext):
 async def skip_media(message: Message, state: FSMContext):
     """Пропуск загрузки медиа."""
     await show_confirmation(message, state)
+
+
+# Новый обработчик для кнопки "Пропустить"
+@add_offer_router.callback_query(F.data == "skip_media", StateFilter(AddOffer.set_media))
+async def skip_media_callback(callback: CallbackQuery, state: FSMContext):
+    """Пропуск загрузки медиа через кнопку."""
+    await callback.answer()
+    
+    # Получаем данные состояния для подтверждения
+    data = await state.get_data()
+
+    text = (
+        "📋 <b>Подтверждение заявки</b>\n\n"
+        f"<b>Категория:</b> {data['category_name']}\n"
+        f"<b>Название:</b> {data['title']}\n"
+        f"<b>Описание:</b> {data['description']}\n"
+        "\n✅ Отправить заявку?"
+    )
+
+    await state.set_state(AddOffer.confirm)
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=get_confirm_keyboard())
 
 
 @add_offer_router.message(AddOffer.set_media)

@@ -224,8 +224,8 @@ async def market_cmd(message: Message, session: AsyncSession):
     for lot in await orm_get_lots(session):
         await message.answer_photo(
             lot.image_id,
-            caption=f"*{lot.type_lot}*\n\n{lot.name}\n_{lot.description}_\n\n{round(lot.price, 0)} тг.\n\n{lot.city}\n{lot.phone}",
-            parse_mode="Markdown",
+            caption=f"<b>{lot.type_lot}</b>\n\n{lot.name}\n<i>{lot.description}</i>\n\n{round(lot.price, 0)} тг.\n\n{lot.city}\n{lot.phone}",
+            parse_mode="HTML",
         )
     await message.answer(
         "На витрине представлены товары и услуги. Выбирай то, что тебе нужно!\n\n"

@@ -51,10 +51,10 @@ async def my_offers_cmd(message: Message, session: AsyncSession, state: FSMConte
     # Объединяем активные и legacy заявки
     all_active = active_offers + legacy_offers
     
-    text = "📋 **Ваши заявки:**\n\n"
+    text = "📋 <b>Ваши заявки:</b>\n\n"
     
     if all_active:
-        text += "🔔 **Активные заявки:**\n"
+        text += "🔔 <b>Активные заявки:</b>\n"
         for offer in all_active:
             # Получаем русское название категории
             category_display = OfferCategory.get_display_name(offer.category)
@@ -68,7 +68,7 @@ async def my_offers_cmd(message: Message, session: AsyncSession, state: FSMConte
             )
     
     if archived_offers:
-        text += f"📦 **Архивные заявки:** {len(archived_offers)} шт.\n"
+        text += f"📦 <b>Архивные заявки:</b> {len(archived_offers)} шт.\n"
     
     # Создаем кнопки для управления заявками
     btns = {}
@@ -81,7 +81,7 @@ async def my_offers_cmd(message: Message, session: AsyncSession, state: FSMConte
     await message.answer(
         text,
         reply_markup=get_callback_btns(btns=btns),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     await state.set_state(MyOffersStates.viewing_offers)
 
@@ -102,7 +102,7 @@ async def manage_offers(callback: CallbackQuery, session: AsyncSession, state: F
         await callback.answer("У вас нет активных заявок")
         return
     
-    text = "🗂 **Управление заявками:**\n\n"
+    text = "🗂 <b>Управление заявками:</b>\n\n"
     text += "Выберите заявку для архивирования:\n\n"
     
     btns = {}
@@ -118,7 +118,7 @@ async def manage_offers(callback: CallbackQuery, session: AsyncSession, state: F
     await callback.message.edit_text(
         text,
         reply_markup=get_callback_btns(btns=btns),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     await state.set_state(MyOffersStates.viewing_offers)
 
@@ -146,9 +146,9 @@ async def confirm_archive_offer(callback: CallbackQuery, session: AsyncSession, 
     
     category_display = OfferCategory.get_display_name(offer.category)
     
-    text = f"🗂 **Архивирование заявки**\n\n"
-    text += f"**Категория:** {category_display}\n"
-    text += f"**Описание:** {offer.description[:100]}{'...' if len(offer.description) > 100 else ''}\n\n"
+    text = f"🗂 <b>Архивирование заявки</b>\n\n"
+    text += f"<b>Категория:</b> {category_display}\n"
+    text += f"<b>Описание:</b> {offer.description[:100]}{'...' if len(offer.description) > 100 else ''}\n\n"
     text += "⚠️ Вы уверены, что хотите переместить эту заявку в архив?\n"
     text += "Архивные заявки можно будет просмотреть, но не редактировать."
     
@@ -160,7 +160,7 @@ async def confirm_archive_offer(callback: CallbackQuery, session: AsyncSession, 
     await callback.message.edit_text(
         text,
         reply_markup=get_callback_btns(btns=btns),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
     await state.set_state(MyOffersStates.confirming_archive)
 
@@ -205,7 +205,7 @@ async def show_archived_offers(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("У вас нет архивных заявок")
         return
     
-    text = "📦 **Архивные заявки:**\n\n"
+    text = "📦 <b>Архивные заявки:</b>\n\n"
     
     for i, offer in enumerate(archived_offers, 1):
         category_display = OfferCategory.get_display_name(offer.category)
@@ -220,7 +220,7 @@ async def show_archived_offers(callback: CallbackQuery, session: AsyncSession):
     await callback.message.edit_text(
         text,
         reply_markup=get_callback_btns(btns=btns),
-        parse_mode="Markdown"
+        parse_mode="HTML"
     )
 
 
