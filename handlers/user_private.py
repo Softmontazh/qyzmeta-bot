@@ -43,6 +43,7 @@ from static.help import help_text
 from filters.chat_types import ChatTypeFilter
 from keyboards.reply import MAIN_KB, get_keyboard
 from keyboards.inline_for_lot import get_btns_control_lots
+from handlers.fsm.add_offer_fsm import add_offer_router
 from handlers.fsm.add_jk_fsm import add_jk_router
 from handlers.fsm.add_lot_fsm import add_lot_router
 from handlers.fsm.search_lot_fsm import search_lot_router
@@ -53,6 +54,7 @@ user_private_router.message.filter(ChatTypeFilter(chat_types=["private"]))
 user_private_router.include_router(add_jk_router)
 user_private_router.include_router(add_lot_router)
 user_private_router.include_router(search_lot_router)
+user_private_router.include_router(add_offer_router)
 user_private_router.include_router(user_to_jk_router)
 
 NAVIGATION_KB = get_keyboard(
@@ -466,78 +468,78 @@ async def unlink_jk_handler(callback: CallbackQuery, session: AsyncSession):
         await callback.answer("Привязка не найдена или уже удалена", show_alert=True)
 
 
-# Обработчик команды "Создать заявку"
-@user_private_router.message(F.text.lower().contains("создать заявку"))
-@user_private_router.message(Command("create_offer"))
-async def create_offer_cmd(message: Message, session: AsyncSession):
-    user_id = message.from_user.id
-    user = await orm_get_user_by_id(session, user_id)
+# # Обработчик команды "Создать заявку"
+# @user_private_router.message(F.text.lower().contains("создать заявку"))
+# @user_private_router.message(Command("create_offer"))
+# async def create_offer_cmd(message: Message, session: AsyncSession):
+#     user_id = message.from_user.id
+#     user = await orm_get_user_by_id(session, user_id)
 
-    # Проверяем, зарегистрирован ли пользователь
-    if not user:
-        await message.answer(
-            "Вы не зарегистрированы в системе."
-            "Для начала отправьте свой номер телефона, чтобы зарегистрироваться.",
-            reply_markup=get_keyboard(
-                "Отправить номер 📞",
-                request_contact=0,
-                placeholder="нажми кнопку",
-                sizes=(1, 1),
-            ),
-        )
-        return
+#     # Проверяем, зарегистрирован ли пользователь
+#     if not user:
+#         await message.answer(
+#             "Вы не зарегистрированы в системе."
+#             "Для начала отправьте свой номер телефона, чтобы зарегистрироваться.",
+#             reply_markup=get_keyboard(
+#                 "Отправить номер 📞",
+#                 request_contact=0,
+#                 placeholder="нажми кнопку",
+#                 sizes=(1, 1),
+#             ),
+#         )
+#         return
 
-    await message.answer("Пожалуйста, введите данные для заявки:")
-    # Здесь можно добавить логику для сбора данных заявки
+#     await message.answer("Пожалуйста, введите данные для заявки:")
+#     # Здесь можно добавить логику для сбора данных заявки
 
 
-@user_private_router.message(F.text.lower().contains("мой профиль"))
-@user_private_router.message(Command("my_profile"))
-async def my_profile_cmd(message: Message, session: AsyncSession):
-    user_id = message.from_user.id
-    user = await orm_get_user_by_id(session, user_id)
+# @user_private_router.message(F.text.lower().contains("мой профиль"))
+# @user_private_router.message(Command("my_profile"))
+# async def my_profile_cmd(message: Message, session: AsyncSession):
+#     user_id = message.from_user.id
+#     user = await orm_get_user_by_id(session, user_id)
 
-    # Проверяем, зарегистрирован ли пользователь
-    if not user:
-        await message.answer(
-            "Вы не зарегистрированы в системе."
-            "Чтобы зарегистрироваться, отправьте свой номер телефона.",
-            reply_markup=get_keyboard(
-                "Отправить номер 📞",
-                request_contact=0,
-                placeholder="нажми кнопку",
-                sizes=(1, 1),
-            ),
-        )
-        return
+#     # Проверяем, зарегистрирован ли пользователь
+#     if not user:
+#         await message.answer(
+#             "Вы не зарегистрированы в системе."
+#             "Чтобы зарегистрироваться, отправьте свой номер телефона.",
+#             reply_markup=get_keyboard(
+#                 "Отправить номер 📞",
+#                 request_contact=0,
+#                 placeholder="нажми кнопку",
+#                 sizes=(1, 1),
+#             ),
+#         )
+#         return
 
-    # Отправляем информацию о пользователе
+# # Отправляем информацию о пользователе
 
-    text = (
-        f"Ваш профиль:\n\n"
-        f"Имя: {user.first_name}\n"
-        f"Номер телефона: {user.phone}\n"
-        f"Роль: {user.role.value}\n\n"
-        f"Ваши Жилищные Комплексы: {len(await orm_get_jks_by_user_id(session, user_id))}\n\n"
-    )
-    text_jks = await orm_get_jks_by_user_id(session, user_id)
-    if text_jks:
-        text += "Ваши ЖК:\n"
-        for jk, user_jk in text_jks:
-            text += f"- {jk.name}, {jk.city}, {jk.street}, {jk.house}, {jk.block or ''}, {user_jk.appartment}\n"
-    else:
-        text += "У вас нет привязанных ЖК.\n"
+# text = (
+#     f"Ваш профиль:\n\n"
+#     f"Имя: {user.first_name}\n"
+#     f"Номер телефона: {user.phone}\n"
+#     f"Роль: {user.role.value}\n\n"
+#     f"Ваши Жилищные Комплексы: {len(await orm_get_jks_by_user_id(session, user_id))}\n\n"
+# )
+# text_jks = await orm_get_jks_by_user_id(session, user_id)
+# if text_jks:
+#     text += "Ваши ЖК:\n"
+#     for jk, user_jk in text_jks:
+#         text += f"- {jk.name}, {jk.city}, {jk.street}, {jk.house}, {jk.block or ''}, {user_jk.appartment}\n"
+# else:
+#     text += "У вас нет привязанных ЖК.\n"
 
-    await message.answer(
-        text,
-        parse_mode=ParseMode.MARKDOWN,
-        reply_markup=get_keyboard(
-            "Удалить профиль ❌",
-            "Главное меню 🏠",
-            placeholder="User Profile Menu",
-            sizes=(1, 1),
-        ),
-    )
+# await message.answer(
+#     text,
+#     parse_mode=ParseMode.MARKDOWN,
+#     reply_markup=get_keyboard(
+#         "Удалить профиль ❌",
+#         "Главное меню 🏠",
+#         placeholder="User Profile Menu",
+#         sizes=(1, 1),
+#     ),
+# )
 
 
 # Обработчик команды "Удалить профиль"

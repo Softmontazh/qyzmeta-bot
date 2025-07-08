@@ -14,13 +14,9 @@ from database.engine import create_db, drop_db, session_maker
 from handlers.user_private import user_private_router
 from handlers.user_group import user_group_router
 from handlers.admin_private import admin_router
+from handlers.fsm.add_offer_fsm import add_offer_router
 
 from common.bot_cmds_list import cmds_list
-
-# ALLOWED_UPDATES = ["message", "edited_message", "callback_query"]
-
-# @satusatypbot
-# https://t.me/satusatypbot - бот учебный
 
 token = os.getenv("TOKEN")
 if token is None:
@@ -31,11 +27,10 @@ my_admins_list = []  # список администраторов бота, б�
 dp = Dispatcher()
 
 # Подключаем роутеры
-
-
 dp.include_router(user_private_router)  # для личных сообщений от пользователей
 dp.include_router(user_group_router)  # для групповых чатов
 dp.include_router(admin_router)  # для личных сообщений от администраторов
+dp.include_router(add_offer_router)  # для создания заявок
 
 
 async def on_startup():

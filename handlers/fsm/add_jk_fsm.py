@@ -67,7 +67,8 @@ async def main_menu(message: Message, state: FSMContext):
 )
 async def create_jk(message: Message, state: FSMContext):
     await state.clear()
-    if str(message.from_user.id) not in os.getenv("CREATOR_ID").split(","):
+    creator_ids = os.getenv("CREATOR_ID")
+    if not creator_ids or str(message.from_user.id) not in creator_ids.split(","):
         await message.answer("⛔ У вас нет прав ⛔")
         return
     await state.set_state(JKCreationState.name)

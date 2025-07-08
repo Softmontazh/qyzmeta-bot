@@ -1,6 +1,4 @@
-# coding: utf-8
-# database/models/model_jk.py
-
+import uuid
 from sqlalchemy import BigInteger, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -12,7 +10,8 @@ class JK(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     uuid: Mapped[str] = mapped_column(
-        String(36), nullable=False, unique=True, index=True
+        String(36), nullable=False, unique=True, index=True, 
+        default=lambda: str(uuid.uuid4())
     )
     name: Mapped[str] = mapped_column(String(100), nullable=True, index=True)
     city: Mapped[str] = mapped_column(String(50), nullable=True)

@@ -1,7 +1,4 @@
-# -*- coding: utf-8 -*-
-# database/models/model_user_jk.py
-
-from sqlalchemy import Integer, BigInteger, ForeignKey, String
+from sqlalchemy import Integer, BigInteger, ForeignKey, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from database.models.model_base import Base
@@ -32,3 +29,8 @@ class UserJK(Base):
 
     # Флаг, указывающий, является ли пользователь Службой ЖК
     is_service: Mapped[bool] = mapped_column(default=False, nullable=True)
+
+    # Уникальность пары пользователь-ЖК
+    __table_args__ = (
+        UniqueConstraint('user_id', 'jk_id', name='unique_user_jk'),
+    )
