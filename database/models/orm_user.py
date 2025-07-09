@@ -37,7 +37,8 @@ async def orm_add_user(session: AsyncSession, data: dict):
         # ),  # Количество лотов, доступных пользователю
     )
     session.add(obj)
-    await session.commit()  # Сохраняем изменения в базе данных
+    # Commit убран - middleware автоматически сделает commit
+    await session.flush()  # Используем flush для получения ID
 
 
 async def orm_get_user_by_id(session: AsyncSession, user_id: int):

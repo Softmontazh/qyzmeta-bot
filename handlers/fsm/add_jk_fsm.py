@@ -432,7 +432,7 @@ async def confirm_jk(callback: CallbackQuery, state: FSMContext, session: AsyncS
         }
         
         jk = await orm_add_jk(session, jk_data)
-        await session.commit()
+        # Commit убран - middleware автоматически сделает commit
         
         text = f"✅ ЖК успешно создан!\n\n"
         text += f"🏢 {jk.name}\n"

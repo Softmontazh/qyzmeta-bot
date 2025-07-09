@@ -481,24 +481,32 @@ async def my_profile_cmd(message: Message, session: AsyncSession):
         return
 
     # Отправляем информацию о пользователе
+    jks_count = len(await orm_get_jks_by_user_id(session, user_id))
+    
     text = (
-        f"Ваш профиль:\n\n"
-        f"Имя: {user.first_name}\n"
-        f"Номер телефона: {user.phone}\n"
-        f"Роль: {user.role.get_russian_name()}\n\n"
-        f"Ваши Жилищные Комплексы: {len(await orm_get_jks_by_user_id(session, user_id))}\n\n"
+        f"👤 <b>Ваш профиль:</b>\n\n"
+        f"👨‍💼 <b>Имя:</b> {user.first_name}\n"
+        f"📱 <b>Номер телефона:</b> {user.phone}\n"
+        f"🏷️ <b>Роль:</b> {user.role.get_russian_name()}\n"
+        f"🏠 <b>Количество привязанных ЖК:</b> {jks_count}\n\n"
     )
     text_jks = await orm_get_jks_by_user_id(session, user_id)
     if text_jks:
-        text += "Ваши ЖК:\n"
+        text += "🏢 <b>Ваши ЖК:</b>\n"
         for jk, user_jk in text_jks:
-            text += f"- {jk.name}, {jk.city}, {jk.street}, {jk.house}, {jk.block or ''}, {user_jk.appartment}\n"
+            # Формируем адрес без лишних запятых
+            address_parts = [jk.city, jk.street, jk.house]
+            if jk.block:  # Добавляем блок только если он указан
+                address_parts.append(f"блок {jk.block}")
+            address = ", ".join(address_parts)
+            
+            text += f"• <b>{jk.name}</b>\n  📍 {address}, кв. {user_jk.appartment}\n"
     else:
-        text += "У вас нет привязанных ЖК.\n"
+        text += "🏢 <b>ЖК:</b> У вас нет привязанных ЖК.\n"
 
     await message.answer(
         text,
-        parse_mode=ParseMode.MARKDOWN,
+        parse_mode="HTML",
         reply_markup=get_keyboard(
             "Удалить профиль ❌",
             "Главное меню 🏠",

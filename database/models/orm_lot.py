@@ -22,7 +22,8 @@ async def orm_add_lot(session: AsyncSession, data: dict):
         owner_id=data["user_id"],  # Добавляем ID владельца лота
     )
     session.add(obj)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
+    await session.flush()  # Используем flush для получения ID
 
 
 async def orm_get_lots(session: AsyncSession):
@@ -108,11 +109,11 @@ async def orm_update_lot(session: AsyncSession, lot_id: int, data):
         )
     )
     await session.execute(query)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
 
 
 async def orm_delete_lot(session: AsyncSession, lot_id: int):
     """Удаление лота по его ID."""
     query = delete(Lot).where(Lot.id == lot_id)
     await session.execute(query)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit

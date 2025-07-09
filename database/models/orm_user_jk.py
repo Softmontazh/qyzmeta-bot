@@ -28,7 +28,8 @@ async def orm_add_user_jk(
     obj = UserJK(user_id=user_id, jk_id=jk_id, appartment=appartment)
 
     session.add(obj)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
+    await session.flush()  # Используем flush для получения ID
     await session.refresh(obj)
     return obj
 
@@ -47,7 +48,7 @@ async def orm_delete_user_jk(session: AsyncSession, user_id: int, jk_id: int) ->
     """Удаление привязки пользователя ЖК по user_id"""
     stmt = delete(UserJK).where(UserJK.user_id == user_id, UserJK.jk_id == jk_id)
     result = await session.execute(stmt)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
     return result.rowcount > 0  # Возвращает True, если удаление успешно
 
 
@@ -81,7 +82,7 @@ async def orm_update_user_jk(
         .values(**data)
     )
     result = await session.execute(stmt)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
     return await orm_get_user_jk(session, user_id, jk_id)
 
 

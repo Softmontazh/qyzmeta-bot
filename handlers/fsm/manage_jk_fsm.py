@@ -154,7 +154,8 @@ async def start_edit_jk(callback: CallbackQuery, state: FSMContext, session: Asy
         current_street=jk.street,
         current_house=jk.house,
         current_block=jk.block,
-        current_image_id=jk.image_id
+        current_image_id=jk.image_id,
+        current_bus_image_id=jk.bus_image_id
     )
     
     # Переходим в состояние редактирования названия

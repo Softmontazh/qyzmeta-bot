@@ -15,6 +15,7 @@ from handlers.user_private import user_private_router
 from handlers.user_group import user_group_router
 from handlers.admin_private import admin_router
 from handlers.fsm.manage_jk_fsm import manage_jk_router
+from services.bus_service import bus_service
 
 from common.bot_cmds_list import cmds_list
 
@@ -22,6 +23,9 @@ token = os.getenv("TOKEN")
 if token is None:
     raise ValueError("Environment variable 'TOKEN' is not set")
 bot = Bot(token=token)
+
+# Инициализируем bus_service
+bus_service.initialize(bot)
 my_admins_list = []  # список администраторов бота, будет заполняться при запуске
 
 dp = Dispatcher()

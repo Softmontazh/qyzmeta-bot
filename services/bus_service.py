@@ -7,11 +7,64 @@
 
 import hashlib
 import time
+import os
 from typing import Optional
+from aiogram import Bot
 
 
 class BUSService:
     """Сервис для создания и управления BUS_ID."""
+    
+    def __init__(self):
+        self.bot: Optional[Bot] = None
+        self.bus_channel_id: Optional[int] = None
+        
+    def initialize(self, bot: Bot):
+        """Инициализация сервиса с ботом."""
+        self.bot = bot
+        self.bus_channel_id = os.getenv("BUS_ID")
+        if self.bus_channel_id:
+            try:
+                self.bus_channel_id = int(self.bus_channel_id)
+            except ValueError:
+                self.bus_channel_id = None
+    
+    async def save_image(self, file_id: str) -> Optional[str]:
+        """
+        Сохраняет изображение в общий канал и возвращает BUS_ID.
+        
+        Args:
+            file_id: Telegram file_id изображения
+            
+        Returns:
+            Optional[str]: BUS_ID или None при ошибке
+        """
+        if not self.bot or not self.bus_channel_id:
+            # Если нет настроек - просто генерируем BUS_ID
+            return self.generate_bus_id(file_id)
+            
+        try:
+            # Генерируем BUS_ID заранее для включения в подпись
+            bus_id = self.generate_bus_id(file_id)
+            
+            # Отправляем фото в общий канал с информативной подписью
+            message = await self.bot.send_photo(
+                chat_id=self.bus_channel_id,
+                photo=file_id,
+                caption=f"🖼️ Qyzmeta Platform - Image Storage\n"
+                       f"🆔 BUS_ID: <code>{bus_id}</code>\n"
+                       f"📅 Дата: {time.strftime('%d.%m.%Y %H:%M', time.localtime())}\n"
+                       f"🏢 Источник: ЖК Management System",
+                parse_mode="HTML"
+            )
+            
+            # В будущем здесь можно сохранять маппинг BUS_ID -> message_id
+            return bus_id
+            
+        except Exception as e:
+            print(f"Ошибка при сохранении изображения в BUS канал: {e}")
+            # Возвращаем сгенерированный BUS_ID даже при ошибке
+            return self.generate_bus_id(file_id)
     
     @staticmethod
     def generate_bus_id(file_id: str, bot_id: str = "qyzmeta_housing") -> str:

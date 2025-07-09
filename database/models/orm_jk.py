@@ -27,7 +27,8 @@ async def orm_add_jk(session: AsyncSession, data: dict):
         creator_id=data.get("creator_id"),  # ID создателя ЖК
     )
     session.add(obj)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
+    await session.flush()  # Используем flush для получения ID
     await session.refresh(obj)
     return obj
 
@@ -76,7 +77,7 @@ async def orm_update_jk(session: AsyncSession, jk_id: int, data: dict) -> JK | N
     )
     
     await session.execute(stmt)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
     
     # Получаем обновленный объект
     updated_jk = await orm_get_jk_by_id(session, jk_id)
@@ -93,7 +94,7 @@ async def orm_delete_jk(session: AsyncSession, jk_id: int) -> bool:
     """Удаление ЖК по ID."""
     stmt = delete(JK).where(JK.id == jk_id)
     result = await session.execute(stmt)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
     return result.rowcount > 0
 
 
@@ -145,5 +146,5 @@ async def orm_update_jk_field(session: AsyncSession, jk_id: int, **kwargs) -> bo
     
     stmt = update(JK).where(JK.id == jk_id).values(**update_data)
     result = await session.execute(stmt)
-    await session.commit()
+    # Commit убран - middleware автоматически сделает commit
     return result.rowcount > 0
