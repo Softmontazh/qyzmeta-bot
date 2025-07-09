@@ -56,6 +56,28 @@
 ### 🔗 UUID и WEB3.0
 Каждый лот имеет UUID и может быть привязан к другим лотам, создавая цифровую историю объекта - основу для WEB3.0 технологий.
 
+## 👥 Пользователи платформы
+
+### Единая модель User для всех проектов:
+- **Базовая информация:** user_id, имя, username, язык
+- **Telegram атрибуты:** is_bot, is_premium, is_business
+- **Контакты:** phone, email, city
+- **Статусы:** is_banned, is_blocked, подписки на каналы/группы
+- **Реферальная система:** invited_by_id
+- **Активность:** last_active, wants_notifications
+
+### Роли в экосистеме:
+- **CREATOR** - Создатель платформы (безлимитные права)
+- **OWNER** - Владелец бизнеса/объекта
+- **ADMIN/SUPERADMIN** - Администраторы разных уровней
+- **MANAGER** - Менеджеры компаний
+- **USER** - Обычные пользователи (жители, работники)
+- **PARTNER** - Партнеры платформы
+- **GUEST** - Гости (ограниченный доступ)
+
+### Лимиты по ролям:
+Система `lot_limits` контролирует количество лотов для каждой роли, обеспечивая справедливое использование ресурсов.
+
 ## 🗄️ Единая база данных
 
 ### Центральные таблицы:
@@ -68,6 +90,31 @@ lots (
     created_at, expires_at
 )
 
+-- Пользователи (обширная модель)
+users (
+    id, user_id, first_name, last_name, username,
+    user_language, is_bot, is_premium, is_business,
+    role, phone, email, city,
+    is_banned, is_blocked, is_blocked_by_admin,
+    is_subscribed_to_channel, is_subscribed_to_group,
+    subscription_expires_at, last_active, wants_notifications,
+    invited_by_id, created_at
+)
+
+-- Роли пользователей
+UserRole ENUM (
+    CREATOR, OWNER, GUEST, USER, ADMIN, SUPERADMIN,
+    MODERATOR, MANAGER, SUPPORT, PARTNER
+)
+
+-- Языки
+UserLanguage ENUM (RU, KZ)
+
+-- Лимиты лотов по ролям
+lot_limits (
+    id, role, limit, description
+)
+
 -- Компании (из MicrofirmKZ)
 companies (
     id, uuid, name, type, owner_telegram_id,
@@ -77,6 +124,26 @@ companies (
 -- Привязки компаний к ЖК
 company_jk_bindings (
     company_id, jk_id, role, active, contract_template_id
+)
+
+-- ЖК (жилые комплексы)
+jks (
+    id, uuid, name, city, street, house, block,
+    channel_id, group_id, id_uk, image_id, bus_image_id,
+    creator_id, created_at
+)
+
+-- Привязки пользователей к ЖК
+user_jks (
+    id, user_id, jk_id, appartment,
+    is_resident, is_admin, is_uk, is_service
+)
+
+-- Заявки/предложения (наследуют от лотов)
+offers (
+    id, uuid, category, title, description,
+    media_id, user_id, user_jk_id, status,
+    created_at, archived_at
 )
 
 -- Шаблоны документов
@@ -99,20 +166,30 @@ document_templates (
 shared/
 ├── database/
 │   ├── models/
-│   │   ├── lot.py           # Центральная модель
-│   │   ├── company.py       # Компании
-│   │   ├── jk.py           # ЖК
-│   │   ├── user.py         # Пользователи
-│   │   └── binding.py      # Привязки
+│   │   ├── lot.py           # Центральная модель лотов
+│   │   ├── user.py          # Обширная модель пользователей
+│   │   ├── company.py       # Компании (УК, сервисы, подрядчики)
+│   │   ├── jk.py           # Жилые комплексы
+│   │   ├── user_jk.py      # Привязки пользователей к ЖК
+│   │   ├── offer.py        # Заявки/предложения (наследуют от лотов)
+│   │   ├── lot_limit.py    # Лимиты лотов по ролям
+│   │   └── binding.py      # Различные привязки
+│   ├── enums/
+│   │   ├── user_enums.py   # Роли и языки пользователей
+│   │   ├── lot_enums.py    # Типы и статусы лотов
+│   │   └── offer_enums.py  # Статусы заявок
 │   └── services/
 │       ├── lot_service.py          # Работа с лотами
-│       ├── web3_service.py         # UUID цепочки
+│       ├── user_service.py         # Работа с пользователями
+│       ├── web3_service.py         # UUID цепочки и WEB3.0
 │       ├── binding_service.py      # Автоматические привязки
-│       ├── notification_service.py # Уведомления
+│       ├── notification_service.py # Уведомления между проектами
 │       └── document_service.py     # Генерация документов
 └── utils/
-    ├── web3_utils.py      # WEB3.0 утилиты
-    └── digital_passport.py # Цифровые паспорта
+    ├── web3_utils.py      # WEB3.0 утилиты и UUID
+    ├── digital_passport.py # Цифровые паспорта объектов
+    ├── role_utils.py      # Утилиты для работы с ролями
+    └── formatters.py      # Форматирование данных
 ```
 
 ### Виртуальные окружения:
