@@ -10,7 +10,7 @@ GitHub Organization: LotBox-Platform (или Softmontazh)
 ├── 📦 lotbox-platform-shared     # Общий модуль
 ├── 🔨 lotbox-bot                # Основная платформа
 ├── 🏠 qyzmeta-bot              # ЖКХ (текущий)
-└── 💼 microfirm-kz             # CRM
+└── 💼 microfirmkz-bot          # CRM
 ```
 
 ## 🔄 Workflow разработки
@@ -27,7 +27,7 @@ mkdir -p shared/{database/{models,services,migrations},utils,config}
 
 ### 2️⃣ **Этап 2: Подключение shared к проектам**
 ```bash
-# В каждом проекте (qyzmeta-bot, lotbox-bot, microfirm-kz)
+# В каждом проекте (qyzmeta-bot, lotbox-bot, microfirmkz-bot)
 git submodule add https://github.com/Softmontazh/lotbox-platform-shared.git shared
 
 # Или как pip package (рекомендуется для продакшн)
@@ -90,7 +90,7 @@ platform_bindings
 ### Неделя 4: Автоматические привязки
 - [ ] Создать сервис привязок
 - [ ] Реализовать уведомления между проектами
-- [ ] Интеграция с MicrofirmKZ
+- [ ] Интеграция с MicrofirmKZ-Bot
 
 ## 🔧 Технические детали
 
@@ -101,7 +101,7 @@ platform_bindings
 
 # Специфичные зависимости проекта
 aiogram==3.20.0  # для ботов
-fastapi==0.104.1  # для microfirm-kz
+fastapi==0.104.1  # для microfirmkz-bot
 ```
 
 ### .env конфигурация:
