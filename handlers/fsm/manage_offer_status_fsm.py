@@ -18,7 +18,7 @@ from sqlalchemy import select
 from database.models.orm_offer import orm_update_offer_status, orm_get_offer_with_user_info
 from database.models.orm_jk_service_provider import orm_get_service_providers_by_user
 from database.enums.offer_enums import OfferStatus
-from handlers.fsm.add_offer_fsm import notify_user_status_change
+from services.notification_service import notify_user_status_change
 
 manage_offer_status_router = Router()
 
