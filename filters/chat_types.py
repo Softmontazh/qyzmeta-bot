@@ -17,12 +17,12 @@ class ChatTypeFilter(BaseFilter):
 class IsAdmin(BaseFilter):
     def __init__(self):
         # Получаем список админов из переменных окружения
-        owner_ids = os.getenv('OWNER_ID', '').split(',')
+        platform_admin_ids = os.getenv('PLATFORM_ADMIN_IDS', '').split(',')
         creator_ids = os.getenv('CREATOR_ID', '').split(',')
         
         # Объединяем списки и конвертируем в int, убираем пустые строки
         admin_ids = []
-        for id_str in owner_ids + creator_ids:
+        for id_str in platform_admin_ids + creator_ids:
             if id_str.strip():
                 try:
                     admin_ids.append(int(id_str.strip()))

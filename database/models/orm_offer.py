@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # database/models/orm_offer.py
 
-from sqlalchemy import select, update, delete, desc
+from sqlalchemy import select, update, delete, desc, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from database.models.model_offer import Offer
@@ -149,3 +149,59 @@ async def orm_get_active_offers_by_user(
         .limit(limit)
     )
     return result.scalars().all()
+
+
+async def orm_update_offer_status(session: AsyncSession, offer_id: int, new_status: OfferStatus) -> tuple[Offer, OfferStatus]:
+    """
+    Обновляет статус заявки и возвращает заявку и старый статус.
+    Возвращает tuple(offer, old_status) для уведомлений.
+    """
+    # Получаем текущую заявку
+    result = await session.execute(
+        select(Offer).where(Offer.id == offer_id)
+    )
+    offer = result.scalar_one_or_none()
+    
+    if not offer:
+        raise ValueError(f"Заявка с ID {offer_id} не найдена")
+    
+    old_status = offer.status
+    
+    # Обновляем статус
+    await session.execute(
+        update(Offer)
+        .where(Offer.id == offer_id)
+        .values(status=new_status, updated_at=func.now())
+    )
+    
+    # Обновляем объект в памяти
+    offer.status = new_status
+    
+    return offer, old_status
+
+
+async def orm_get_offer_with_user_info(session: AsyncSession, offer_id: int) -> Offer:
+    """
+    Получает заявку с полной информацией о пользователе и ЖК для уведомлений.
+    """
+    from database.models.model_user import User
+    
+    result = await session.execute(
+        select(Offer)
+        .options(
+            selectinload(Offer.user_jk).selectinload(UserJK.jk)
+        )
+        .where(Offer.id == offer_id)
+    )
+    offer = result.scalar_one_or_none()
+    
+    if offer and offer.user_jk:
+        # Загружаем информацию о пользователе отдельно
+        user_result = await session.execute(
+            select(User).where(User.user_id == offer.user_jk.user_id)
+        )
+        user = user_result.scalar_one_or_none()
+        # Добавляем пользователя как атрибут для удобства
+        offer.user_jk.user = user
+    
+    return offer

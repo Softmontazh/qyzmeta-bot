@@ -112,10 +112,11 @@ async def handle_jk_selection(callback: CallbackQuery, state: FSMContext, sessio
     text += f"🆔 <b>ID:</b> {jk.id}\n"
     text += f"📅 <b>Создан:</b> {jk.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
     
-    # Простая клавиатура - только "Изменить" и "Назад"
+    # Клавиатура с кнопками управления
     keyboard = InlineKeyboardMarkup(inline_keyboard=[
         [
-            InlineKeyboardButton(text="✏️ Изменить", callback_data=f"edit_jk_{jk_id}")
+            InlineKeyboardButton(text="✏️ Изменить", callback_data=f"edit_jk_{jk_id}"),
+            InlineKeyboardButton(text="🔧 Услуги", callback_data=f"manage_services_jk_{jk_id}")
         ],
         [
             InlineKeyboardButton(text="⬅️ К списку ЖК", callback_data="back_to_jk_list")
@@ -276,3 +277,36 @@ async def back_to_add_jk_menu(callback: CallbackQuery, state: FSMContext):
         parse_mode=None
     )
     await callback.answer()
+
+
+# Обработка кнопки "Услуги" - переход к управлению поставщиками услуг
+@manage_jk_router.callback_query(F.data.startswith("manage_services_jk_"))
+async def handle_manage_services_jk(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    """Перейти к управлению поставщиками услуг для конкретного ЖК."""
+    jk_id = int(callback.data.split("_")[-1])
+    
+    # Проверяем права доступа
+    from handlers.fsm.manage_service_providers_fsm import check_service_management_access
+    user_id = callback.from_user.id
+    has_access, access_level = await check_service_management_access(user_id, session, jk_id)
+    
+    if not has_access:
+        await callback.answer("❌ Нет прав для управления услугами этого ЖК", show_alert=True)
+        return
+    
+    # Импортируем и вызываем функцию для конкретного ЖК
+    from handlers.fsm.manage_service_providers_fsm import handle_jk_selection, ManageServiceProviderStates
+    
+    # Устанавливаем состояние и данные
+    await state.update_data(
+        access_level=access_level,
+        available_jks=[jk_id],
+        selected_jk_id=jk_id
+    )
+    await state.set_state(ManageServiceProviderStates.select_jk)
+    
+    # Имитируем callback для выбора ЖК
+    fake_callback_data = f"select_jk:{jk_id}"
+    callback.data = fake_callback_data
+    
+    await handle_jk_selection(callback, state, session)

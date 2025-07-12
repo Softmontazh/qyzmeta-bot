@@ -124,3 +124,42 @@ async def orm_get_jk_by_user_id_is_service(
         select(UserJK).where(UserJK.user_id == user_id, UserJK.is_service.is_(True))
     )
     return result.scalar_one_or_none()  # Возвращает привязку или None, если не найдено
+
+
+async def orm_get_jks_by_user_admin(session: AsyncSession, user_id: int) -> list[JK]:
+    """Получение списка ЖК, где пользователь является администратором"""
+    result = await session.execute(
+        select(JK)
+        .join(UserJK)
+        .where(UserJK.user_id == user_id, UserJK.is_admin.is_(True))
+    )
+    return result.scalars().all()
+
+
+async def orm_check_user_is_jk_admin(session: AsyncSession, user_id: int, jk_id: int) -> bool:
+    """Проверка, является ли пользователь администратором конкретного ЖК"""
+    result = await session.execute(
+        select(UserJK).where(
+            UserJK.user_id == user_id,
+            UserJK.jk_id == jk_id,
+            UserJK.is_admin.is_(True)
+        )
+    )
+    return result.scalar_one_or_none() is not None
+
+
+async def orm_set_user_jk_admin(session: AsyncSession, user_id: int, jk_id: int, is_admin: bool = True) -> UserJK | None:
+    """Назначение/снятие пользователя администратором ЖК"""
+    result = await session.execute(
+        select(UserJK).where(
+            UserJK.user_id == user_id,
+            UserJK.jk_id == jk_id
+        )
+    )
+    user_jk = result.scalar_one_or_none()
+    
+    if user_jk:
+        user_jk.is_admin = is_admin
+        await session.flush()
+        return user_jk
+    return None

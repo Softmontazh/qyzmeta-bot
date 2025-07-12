@@ -15,6 +15,8 @@ from handlers.user_private import user_private_router
 from handlers.user_group import user_group_router
 from handlers.admin_private import admin_router
 from handlers.fsm.manage_jk_fsm import manage_jk_router
+from handlers.fsm.manage_service_providers_fsm import manage_service_providers_router
+from handlers.fsm.manage_offer_status_fsm import manage_offer_status_router
 from services.bus_service import bus_service
 
 from common.bot_cmds_list import cmds_list
@@ -33,6 +35,8 @@ dp = Dispatcher()
 # Подключаем роутеры
 dp.include_router(user_private_router)  # для личных сообщений от пользователей
 dp.include_router(manage_jk_router)  # для управления ЖК (должен быть до user_group)
+dp.include_router(manage_service_providers_router)  # для управления поставщиками услуг
+dp.include_router(manage_offer_status_router)  # для управления статусами заявок
 dp.include_router(user_group_router)  # для групповых чатов
 dp.include_router(admin_router)  # для личных сообщений от администраторов
 
@@ -44,7 +48,7 @@ async def on_startup():
     print("Создание базы данных...")
     # Параметр для сброса базы данных
     # Если нужно сбросить базу данных, то установите run_param в True
-    run_param = False
+    run_param = False  # Отключаем сброс, будем использовать другой подход
     if run_param:  # если нужно сбросить базу данных
         print("Сброс базы данных...")
         await drop_db()  # сброс базы данных

@@ -8,6 +8,7 @@ class OfferCategory(Enum):
     """Категории заявок с отображением на русском языке"""
     
     DOMOFON = ("domofon", "Домофон", "🔔")
+    VIDEO = ("video", "Видеонаблюдение", "📹")
     ELEKTRIKA = ("elektrika", "Электрика", "⚡")
     SANTEHNIKA = ("santehnika", "Сантехника", "🚿")
     BLAGOUSTROYSTVO = ("blagoustroystvo", "Благоустройство", "🌳")
@@ -30,13 +31,15 @@ class OfferCategory(Enum):
         return cls.DRUGOE  # По умолчанию, если не найдено
     
     @classmethod
-    def get_display_name(cls, category_str: str) -> str:
-        """Получить отображаемое название по строковому значению"""
-        category = cls.from_string(category_str)
+    def get_display_name(cls, category) -> str:
+        """Получить отображаемое название по enum объекту или строке"""
+        if isinstance(category, str):
+            category = cls.from_string(category)
         return category.display_name
     
     @classmethod
-    def get_emoji(cls, category_str: str) -> str:
-        """Получить эмодзи по строковому значению"""
-        category = cls.from_string(category_str)
+    def get_emoji(cls, category) -> str:
+        """Получить эмодзи по enum объекту или строке"""
+        if isinstance(category, str):
+            category = cls.from_string(category)
         return category.emoji

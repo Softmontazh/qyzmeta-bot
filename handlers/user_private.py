@@ -44,6 +44,9 @@ from static.support import support_text
 from filters.chat_types import ChatTypeFilter
 from keyboards.reply import MAIN_KB, get_keyboard
 from keyboards.inline_for_lot import get_btns_control_lots
+from utils.registration_check import check_user_registration
+
+
 from handlers.fsm.add_offer_fsm import add_offer_router
 from handlers.fsm.my_offers_fsm import my_offers_router
 from handlers.fsm.add_jk_fsm import add_jk_router
@@ -76,8 +79,9 @@ async def start_cmd(message: Message, session: AsyncSession):
     user_id = message.from_user.id
     first_name = message.from_user.first_name
     start_user = await orm_get_user_by_id(session, user_id)
+    
     if not start_user:
-        # Если пользователь не найден в базе, добавляем его
+        # Если пользователь не найден в базе, добавляем его как GUEST
         new_user = {
             "user_id": user_id,
             "first_name": first_name,
@@ -99,8 +103,22 @@ async def start_cmd(message: Message, session: AsyncSession):
                 sizes=(1,),
             ),
         )
+    elif start_user.role == UserRole.GUEST or not start_user.phone:
+        # Если пользователь существует, но он GUEST или нет телефона - требуем регистрацию
+        await message.answer(
+            "👋 Привет снова!\n\n"
+            "Я вижу, что ты еще не завершил регистрацию. Чтобы начать пользоваться всеми возможностями сервиса, пожалуйста, отправь свой номер телефона 📱\n\n"
+            "👇 Просто нажми на кнопку ниже 👇",
+            parse_mode=ParseMode.MARKDOWN,
+            reply_markup=get_keyboard(
+                "Отправить номер 📞",
+                request_contact=0,
+                placeholder="нажми кнопку",
+                sizes=(1,),
+            ),
+        )
     else:
-        # Если пользователь уже существует, отправляем приветствие
+        # Если пользователь зарегистрирован (имеет роль USER или выше и телефон)
         await message.answer(
             f"Привет, {first_name}! 😊\n\nЯ рад тебя видеть снова! 🤗\n\n"
         )
@@ -273,9 +291,14 @@ async def policy_cmd(message: Message):
         Command("main_menu")
     )
 )
-async def main_menu_cmd(message: Message, state: FSMContext):
+async def main_menu_cmd(message: Message, state: FSMContext, session: AsyncSession):
     """Переход в главное меню"""
     await state.clear()  # Очищаем состояние FSM
+    
+    # Проверяем завершенность регистрации
+    if not await check_user_registration(message, session):
+        return
+    
     await message.answer(
         "🏠 Главное меню",
         reply_markup=MAIN_KB
@@ -357,6 +380,10 @@ async def get_contact(message: Message, bot: Bot, session: AsyncSession):
 @user_private_router.message(F.text.lower().contains("мой дом"))
 @user_private_router.message(Command("my_jk"))
 async def my_jk_cmd(message: Message, session: AsyncSession):
+    # Проверяем завершенность регистрации
+    if not await check_user_registration(message, session):
+        return
+        
     user_id = message.from_user.id
     jk_by_user = await orm_get_jks_by_user_id(session, user_id)
     # Проверяем, есть ли у пользователя ЖК
@@ -463,22 +490,12 @@ async def unlink_jk_handler(callback: CallbackQuery, session: AsyncSession):
 @user_private_router.message(F.text.lower().contains("мой профиль"))
 @user_private_router.message(Command("my_profile"))
 async def my_profile_cmd(message: Message, session: AsyncSession):
+    # Проверяем завершенность регистрации
+    if not await check_user_registration(message, session):
+        return
+        
     user_id = message.from_user.id
     user = await orm_get_user_by_id(session, user_id)
-
-    # Проверяем, зарегистрирован ли пользователь
-    if not user:
-        await message.answer(
-            "Вы не зарегистрированы в системе."
-            "Чтобы зарегистрироваться, отправьте свой номер телефона.",
-            reply_markup=get_keyboard(
-                "Отправить номер 📞",
-                request_contact=0,
-                placeholder="нажми кнопку",
-                sizes=(1, 1),
-            ),
-        )
-        return
 
     # Отправляем информацию о пользователе
     jks_count = len(await orm_get_jks_by_user_id(session, user_id))

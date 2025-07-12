@@ -9,13 +9,14 @@ from database.models.model_user import User
 from database.models.model_offer import Offer
 from database.models.model_lot import Lot
 from database.models.model_lot_limit import LotLimit
+from database.models.model_jk_service_provider import JKServiceProvider
 
 # from .env file:
-# DB_URL=postgresql+asyncpg://login:password@localhost:5432/db_name
+# DATABASE_URL=postgresql+asyncpg://login:password@localhost:5432/db_name
 
-db_url = os.getenv("DB_URL")
+db_url = os.getenv("DATABASE_URL")
 if db_url is None:
-    raise ValueError("Environment variable DB_URL is not set")
+    raise ValueError("Environment variable DATABASE_URL is not set")
 
 engine = create_async_engine(db_url, echo=True)
 

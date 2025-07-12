@@ -34,56 +34,13 @@ class MyOffersStates(StatesGroup):
 async def my_offers_cmd(message: Message, session: AsyncSession, state: FSMContext):
     """Показать все заявки пользователя"""
     
-    offers = await orm_get_offers_by_user_id(session, message.from_user.id)
-    
-    if not offers:
-        await message.answer(
-            "У вас пока нет заявок.\n"
-            "Используйте кнопку '📝 Подать заявку' для создания новой заявки."
-        )
+    # Проверяем завершенность регистрации
+    from utils.registration_check import check_user_registration
+    if not await check_user_registration(message, session):
         return
     
-    # Группируем заявки по статусам
-    active_offers = [o for o in offers if o.status != OfferStatus.ARCHIVED and o.status is not None]
-    legacy_offers = [o for o in offers if o.status is None]  # Старые заявки без статуса
-    archived_offers = [o for o in offers if o.status == OfferStatus.ARCHIVED]
-    
-    # Объединяем активные и legacy заявки
-    all_active = active_offers + legacy_offers
-    
-    text = "📋 <b>Ваши заявки:</b>\n\n"
-    
-    if all_active:
-        text += "🔔 <b>Активные заявки:</b>\n"
-        for offer in all_active:
-            # Получаем русское название категории
-            category_display = OfferCategory.get_display_name(offer.category)
-            status_display = OfferStatus.get_display_name(offer.status) if offer.status else "Не указан"
-            
-            text += (
-                f"• {category_display}\n"
-                f"  📝 {offer.description[:50]}{'...' if len(offer.description) > 50 else ''}\n"
-                f"  📊 Статус: {status_display}\n"
-                f"  📅 {offer.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
-            )
-    
-    if archived_offers:
-        text += f"📦 <b>Архивные заявки:</b> {len(archived_offers)} шт.\n"
-    
-    # Создаем кнопки для управления заявками
-    btns = {}
-    if all_active:
-        btns["🗂 Управлять заявками"] = "manage_offers"
-    if archived_offers:
-        btns["📦 Показать архив"] = "show_archived"
-    btns["🔙 Назад"] = "back_to_main"
-    
-    await message.answer(
-        text,
-        reply_markup=get_callback_btns(btns=btns),
-        parse_mode="HTML"
-    )
-    await state.set_state(MyOffersStates.viewing_offers)
+    # Используем внутреннюю функцию для показа заявок
+    await show_offers_internal(message, session, state, message.from_user.id)
 
 
 @my_offers_router.callback_query(
@@ -185,8 +142,8 @@ async def archive_offer(callback: CallbackQuery, session: AsyncSession, state: F
     if success:
         await callback.answer("✅ Заявка успешно архивирована")
         
-        # Возвращаемся к списку заявок
-        await my_offers_cmd(callback.message, session, state)
+        # Возвращаемся к списку заявок без проверки регистрации
+        await show_offers_internal(callback.message, session, state, callback.from_user.id, edit_message=True)
     else:
         await callback.answer("❌ Ошибка при архивировании заявки")
 
@@ -231,7 +188,8 @@ async def back_navigation(callback: CallbackQuery, session: AsyncSession, state:
     """Навигация назад"""
     
     if callback.data == "back_to_my_offers":
-        await my_offers_cmd(callback.message, session, state)
+        # Используем внутреннюю функцию без проверки регистрации
+        await show_offers_internal(callback.message, session, state, callback.from_user.id, edit_message=True)
     else:  # back_to_main
         await callback.message.edit_text(
             "Главное меню",
@@ -249,3 +207,66 @@ async def cancel_my_offers(message: Message, state: FSMContext):
     """Отмена просмотра заявок и возврат в главное меню"""
     await state.clear()
     await message.answer("Возвращение в главное меню")
+
+
+async def show_offers_internal(message: Message, session: AsyncSession, state: FSMContext, user_id: int, edit_message: bool = False):
+    """Внутренняя функция для показа заявок без проверки регистрации"""
+    
+    offers = await orm_get_offers_by_user_id(session, user_id)
+    
+    if not offers:
+        text = "У вас пока нет заявок.\nИспользуйте кнопку '📝 Подать заявку' для создания новой заявки."
+        if edit_message:
+            await message.edit_text(text)
+        else:
+            await message.answer(text)
+        return
+    
+    # Группируем заявки по статусам
+    active_offers = [o for o in offers if o.status != OfferStatus.ARCHIVED and o.status is not None]
+    legacy_offers = [o for o in offers if o.status is None]  # Старые заявки без статуса
+    archived_offers = [o for o in offers if o.status == OfferStatus.ARCHIVED]
+    
+    # Объединяем активные и legacy заявки
+    all_active = active_offers + legacy_offers
+    
+    text = "📋 <b>Ваши заявки:</b>\n\n"
+    
+    if all_active:
+        text += "🔔 <b>Активные заявки:</b>\n"
+        for offer in all_active:
+            # Получаем русское название категории
+            category_display = OfferCategory.get_display_name(offer.category)
+            status_display = OfferStatus.get_display_name(offer.status) if offer.status else "Не указан"
+            
+            text += (
+                f"• {category_display}\n"
+                f"  📝 {offer.description[:50]}{'...' if len(offer.description) > 50 else ''}\n"
+                f"  📊 Статус: {status_display}\n"
+                f"  📅 {offer.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
+            )
+    
+    if archived_offers:
+        text += f"📦 <b>Архивные заявки:</b> {len(archived_offers)} шт.\n"
+    
+    # Создаем кнопки для управления заявками
+    btns = {}
+    if all_active:
+        btns["🗂 Управлять заявками"] = "manage_offers"
+    if archived_offers:
+        btns["📦 Показать архив"] = "show_archived"
+    btns["🔙 Назад"] = "back_to_main"
+    
+    if edit_message:
+        await message.edit_text(
+            text,
+            reply_markup=get_callback_btns(btns=btns),
+            parse_mode="HTML"
+        )
+    else:
+        await message.answer(
+            text,
+            reply_markup=get_callback_btns(btns=btns),
+            parse_mode="HTML"
+        )
+    await state.set_state(MyOffersStates.viewing_offers)

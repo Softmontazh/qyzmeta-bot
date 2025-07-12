@@ -7,6 +7,7 @@ from database.models.model_base import Base
 
 if TYPE_CHECKING:
     from database.models.model_user_jk import UserJK
+    from database.models.model_jk_service_provider import JKServiceProvider
 
 
 class JK(Base):
@@ -37,6 +38,12 @@ class JK(Base):
 
     # Связи
     user_jks: Mapped[list["UserJK"]] = relationship("UserJK", back_populates="jk")
+    service_providers: Mapped[list["JKServiceProvider"]] = relationship(
+        "JKServiceProvider", 
+        back_populates="jk",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
 
     @property
     def full_address(self) -> str:
