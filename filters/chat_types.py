@@ -32,6 +32,4 @@ class IsAdmin(BaseFilter):
         self.admin_ids = list(set(admin_ids))  # Убираем дубликаты
 
     async def __call__(self, message: types.Message, bot: Bot) -> bool:
-        print(f"сработал фильтр IsAdmin для {message.from_user.id}")
-        print(f"список админов: {self.admin_ids}")
         return message.from_user.id in self.admin_ids

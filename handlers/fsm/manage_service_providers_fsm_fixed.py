@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 # handlers/fsm/manage_service_providers_fsm.py
 """
 FSM для управления поставщиками услуг в ЖК.
@@ -42,7 +42,6 @@ from services.service_provider_service import (
     validate_work_schedule
 )
 from utils.phone_validator import validate_phone, PhoneValidator
-from filters.chat_types import IsAdmin
 
 manage_service_providers_router = Router()
 
@@ -60,21 +59,23 @@ class ManageServiceProviderStates(StatesGroup):
     confirm_provider = State()   # Подтверждение создания
 
 
-@manage_service_providers_router.message(Command("manage_services"), IsAdmin())
+@manage_service_providers_router.message(Command("manage_services"))
 async def cmd_manage_services(message: Message, state: FSMContext, session: AsyncSession):
     """Команда для управления поставщиками услуг."""
     await state.clear()
     user_id = message.from_user.id
     
+    # Проверяем права доступа
+    has_access, error_msg = await check_service_management_access(user_id, session)
+    if not has_access:
+        await message.answer(error_msg, reply_markup=MAIN_KB)
+        return
+    
     # Получаем доступные ЖК для пользователя
     user = await orm_get_user_by_id(session, user_id)
     
-    # Проверяем, является ли пользователь создателем по CREATOR_ID
-    creator_ids = os.getenv("CREATOR_ID")
-    is_creator_by_env = creator_ids and str(user_id) in creator_ids.split(",")
-    
-    if is_creator_by_env or user.role in [UserRole.ADMIN, UserRole.CREATOR]:
-        # Суперадмин, создатель и пользователи из CREATOR_ID видят все ЖК
+    if user.role == UserRole.ADMIN:
+        # Суперадмин видит все ЖК
         available_jks = await orm_get_all_jks(session)
     else:
         # Админ ЖК видит только свои ЖК
@@ -99,7 +100,7 @@ async def cmd_manage_services(message: Message, state: FSMContext, session: Asyn
         if providers:
             providers_text += "📋 <b>Поставщики услуг:</b>\n\n"
             for i, provider in enumerate(providers, 1):
-                category_emoji = provider.category.emoji
+                category_emoji = OfferCategory.get_emoji_by_value(provider.category)
                 status = "✅ Активен" if provider.is_active else "❌ Неактивен"
                 notifications = "🔔 Вкл" if provider.receives_notifications else "🔕 Выкл"
                 
@@ -148,7 +149,7 @@ async def handle_jk_selection(callback: CallbackQuery, state: FSMContext, sessio
     if providers:
         providers_text += "📋 <b>Поставщики услуг:</b>\n\n"
         for i, provider in enumerate(providers, 1):
-            category_emoji = provider.category.emoji
+            category_emoji = OfferCategory.get_emoji_by_value(provider.category)
             status = "✅ Активен" if provider.is_active else "❌ Неактивен"
             notifications = "🔔 Вкл" if provider.receives_notifications else "🔕 Выкл"
             
@@ -212,7 +213,7 @@ async def handle_category_selection(callback: CallbackQuery, state: FSMContext, 
     existing_provider = await orm_get_service_provider_by_category(session, jk_id, category)
     if existing_provider:
         await callback.answer(
-            f"❌ Поставщик для категории '{category.display_name}' уже существует",
+            f"❌ Поставщик для категории '{category.get_display_name()}' уже существует",
             show_alert=True
         )
         return
@@ -221,7 +222,7 @@ async def handle_category_selection(callback: CallbackQuery, state: FSMContext, 
     await state.set_state(ManageServiceProviderStates.input_user_id)
     
     await callback.message.edit_text(
-        f"✅ Выбрана категория: <b>{category.display_name}</b> {category.emoji}\n\n"
+        f"✅ Выбрана категория: <b>{category.get_display_name()}</b> {category.get_emoji()}\n\n"
         "👤 <b>Введите User ID ответственного лица</b>\n\n"
         "Это должен быть пользователь, зарегистрированный в боте, который будет получать уведомления о новых заявках.\n\n"
         "💡 <i>User ID можно узнать в профиле пользователя или попросить его отправить команду /my_id</i>",
@@ -363,7 +364,7 @@ async def show_provider_confirmation(message: Message, state: FSMContext, sessio
     confirmation_text = (
         "✅ <b>Подтверждение создания поставщика услуг</b>\n\n"
         f"🏢 <b>ЖК:</b> {jk.name}\n"
-        f"📑 <b>Категория:</b> {category.display_name} {category.emoji}\n"
+        f"📑 <b>Категория:</b> {category.get_display_name()} {category.get_emoji()}\n"
         f"🏛️ <b>Организация:</b> {data['organization_name']}\n"
         f"👤 <b>Ответственное лицо:</b> {user_name}\n"
         f"📞 <b>Телефон:</b> {phone_text}\n"
@@ -407,7 +408,7 @@ async def confirm_create_provider(callback: CallbackQuery, state: FSMContext, se
         await callback.message.edit_text(
             f"✅ <b>Поставщик услуг успешно создан!</b>\n\n"
             f"🏢 <b>ЖК:</b> {jk.name}\n"
-            f"📑 <b>Категория:</b> {category.display_name} {category.emoji}\n"
+            f"📑 <b>Категория:</b> {category.get_display_name()} {category.get_emoji()}\n"
             f"🏛️ <b>Организация:</b> {data['organization_name']}\n\n"
             "Поставщик получает уведомления о новых заявках по этой категории.",
             parse_mode="HTML",
@@ -444,12 +445,7 @@ async def back_to_jk_selection(callback: CallbackQuery, state: FSMContext, sessi
     
     # Получаем доступные ЖК
     user = await orm_get_user_by_id(session, user_id)
-    
-    # Проверяем, является ли пользователь создателем по CREATOR_ID
-    creator_ids = os.getenv("CREATOR_ID")
-    is_creator_by_env = creator_ids and str(user_id) in creator_ids.split(",")
-    
-    if is_creator_by_env or user.role in [UserRole.ADMIN, UserRole.CREATOR]:
+    if user.role == UserRole.ADMIN:
         available_jks = await orm_get_all_jks(session)
     else:
         available_jks = await orm_get_jks_by_user_admin(session, user_id)
@@ -473,3 +469,13 @@ async def to_main_menu(callback: CallbackQuery, state: FSMContext):
     )
     await state.clear()
     await callback.answer()
+
+
+# Обработчик для некорректного ввода в состоянии input_user_id
+@manage_service_providers_router.message(ManageServiceProviderStates.input_user_id)
+async def invalid_user_id_input(message: Message):
+    """Обработчик некорректного ввода User ID."""
+    await message.answer(
+        "❌ Пожалуйста, введите корректный User ID (число).\n"
+        "Попробуйте еще раз:"
+    )

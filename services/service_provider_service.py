@@ -24,17 +24,26 @@ async def check_service_management_access(user_id: int, session: AsyncSession, j
     Returns:
         Tuple[bool, str]: (имеет доступ, сообщение об ошибке)
     """
+    import os
+    
+    # Проверяем, является ли пользователь создателем по CREATOR_ID
+    creator_ids = os.getenv("CREATOR_ID")
+    is_creator_by_env = creator_ids and str(user_id) in creator_ids.split(",")
+    
+    if is_creator_by_env:
+        return True, ""
+    
     # Получаем пользователя
     user = await orm_get_user_by_id(session, user_id)
     if not user:
         return False, "❌ Пользователь не найден"
     
     # Проверяем роль пользователя
-    if user.role not in [UserRole.ADMIN, UserRole.ADMIN_JK]:
+    if user.role not in [UserRole.ADMIN, UserRole.ADMIN_JK, UserRole.CREATOR]:
         return False, "❌ У вас недостаточно прав для управления поставщиками услуг"
     
-    # Если пользователь - суперадмин, доступ ко всему
-    if user.role == UserRole.ADMIN:
+    # Если пользователь - суперадмин или создатель, доступ ко всему
+    if user.role in [UserRole.ADMIN, UserRole.CREATOR]:
         return True, ""
     
     # Если администратор ЖК, проверяем доступ к конкретному ЖК

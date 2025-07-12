@@ -16,13 +16,12 @@ def get_category_keyboard() -> InlineKeyboardMarkup:
     
     # Добавляем кнопки для каждой категории
     for category in OfferCategory:
-        if category != OfferCategory.ALL:  # Исключаем категорию "Все"
-            buttons.append([
-                InlineKeyboardButton(
-                    text=f"{category.get_emoji()} {category.get_display_name()}",
-                    callback_data=f"select_category:{category.value}"
-                )
-            ])
+        buttons.append([
+            InlineKeyboardButton(
+                text=f"{category.emoji} {category.display_name}",
+                callback_data=f"select_category:{category.value}"
+            )
+        ])
     
     # Добавляем кнопку "Назад"
     buttons.append([
@@ -50,7 +49,7 @@ def get_providers_keyboard(providers: List, jk_id: int) -> InlineKeyboardMarkup:
     
     # Кнопки с поставщиками
     for provider in providers:
-        category_emoji = OfferCategory.get_emoji_by_value(provider.category)
+        category_emoji = provider.category.emoji
         status_emoji = "✅" if provider.is_active else "❌"
         notification_emoji = "🔔" if provider.receives_notifications else "🔕"
         
