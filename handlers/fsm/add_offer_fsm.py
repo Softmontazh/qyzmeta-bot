@@ -142,11 +142,46 @@ async def choose_jk(callback: CallbackQuery, state: FSMContext, session: AsyncSe
 
 
 @add_offer_router.callback_query(F.data.startswith("category:"))
-async def choose_category(callback: CallbackQuery, state: FSMContext):
+async def choose_category(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     """Обработка выбора категории."""
     category_key = callback.data.split(":")[1]
     category_name = OFFER_CATEGORIES.get(category_key, "Неизвестная категория")
-
+    
+    # Получаем данные из state
+    data = await state.get_data()
+    jk_id = data.get('jk_id')
+    
+    if not jk_id:
+        await callback.answer("❌ Ошибка: ЖК не выбран")
+        return
+    
+    # НОВАЯ ПРОВЕРКА: Есть ли поставщики услуг для этой категории в данном ЖК
+    from database.models.orm_jk_service_provider import orm_get_service_providers_by_category_and_jk
+    from database.enums.offer_category_enum import OfferCategory
+    
+    category_enum = OfferCategory.from_string(category_key)
+    service_providers = await orm_get_service_providers_by_category_and_jk(
+        session, jk_id, category_enum
+    )
+    
+    # Если нет обслуживающих организаций по этой категории
+    if not service_providers:
+        await callback.message.edit_text(
+            f"❌ <b>Нет обслуживающих организаций</b>\n\n"
+            f"К сожалению, для категории <b>'{category_name}'</b> в вашем ЖК "
+            f"<b>{data.get('jk_name', '')}</b> не назначены обслуживающие организации.\n\n"
+            f"📞 <b>Для решения вопроса обратитесь:</b>\n"
+            f"• В управляющую компанию вашего ЖК\n" 
+            f"• В службу поддержки @lotboxsup\n"
+            f"• Используйте команду /support для контактов\n\n"
+            f"🔄 Выберите другую категорию:",
+            parse_mode="HTML",
+            reply_markup=get_categories_keyboard()
+        )
+        await callback.answer("Нет обслуживающих организаций")
+        return
+    
+    # Если есть поставщики - продолжаем как обычно
     await state.update_data(category=category_key, category_name=category_name)
     await state.set_state(AddOffer.set_title)
 

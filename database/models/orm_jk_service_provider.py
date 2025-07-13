@@ -99,7 +99,8 @@ async def orm_get_service_provider_by_category(session: AsyncSession, jk_id: int
             .where(JKServiceProvider.jk_id == jk_id)
             .where(JKServiceProvider.category == category)
             .where(JKServiceProvider.is_active == True)
-            .order_by(JKServiceProvider.priority)
+            .where(JKServiceProvider.receives_notifications == True)
+            .order_by(JKServiceProvider.priority)  # 1 - наивысший приоритет
             .limit(1))
     
     result = await session.execute(stmt)
@@ -183,3 +184,25 @@ async def orm_get_working_providers_now(session: AsyncSession, jk_id: int) -> Li
     """Получить поставщиков услуг, которые работают сейчас"""
     providers = await orm_get_service_providers_by_jk(session, jk_id, active_only=True)
     return [provider for provider in providers if provider.is_working_now()]
+
+
+async def orm_get_service_providers_by_category_and_jk(
+    session: AsyncSession, 
+    jk_id: int, 
+    category: OfferCategory,
+    active_only: bool = True
+) -> List[JKServiceProvider]:
+    """Получить всех поставщиков услуг для конкретной категории в ЖК (с учетом приоритета)"""
+    stmt = (select(JKServiceProvider)
+            .where(JKServiceProvider.jk_id == jk_id)
+            .where(JKServiceProvider.category == category))
+    
+    if active_only:
+        stmt = stmt.where(JKServiceProvider.is_active == True)
+        stmt = stmt.where(JKServiceProvider.receives_notifications == True)
+    
+    # Сортируем по приоритету (1 - наивысший)
+    stmt = stmt.order_by(JKServiceProvider.priority)
+    
+    result = await session.execute(stmt)
+    return result.scalars().all()
