@@ -12,22 +12,21 @@ from database.enums.offer_category_enum import OfferCategory
 from database.enums.offer_enums import OfferStatus
 
 
-async def notify_service_provider(session: AsyncSession, bot, offer, user_jk_id: int, category: str):
-    """Уведомить поставщика услуг о новой заявке"""
+async def notify_service_provider(session: AsyncSession, bot, offer, jk_data, user_jk_data, user_data, category: str):
+    """Уведомить поставщика услуг о новой заявке
+    
+    Args:
+        session: Сессия базы данных
+        bot: Экземпляр бота
+        offer: Объект заявки
+        jk_data: Объект JK из state
+        user_jk_data: Объект UserJK из state  
+        user_data: Объект User из state
+        category: Категория заявки
+    """
     try:
-        # Получаем связь пользователя с ЖК по user_jk_id с информацией о пользователе
-        from database.models.model_user import User
-        result = await session.execute(
-            select(UserJK, User).join(User, UserJK.user_id == User.user_id).where(UserJK.id == user_jk_id)
-        )
-        row = result.first()
-        
-        if not row:
-            print(f"⚠️ Связь пользователя с ЖК (user_jk_id={user_jk_id}) не найдена")
-            return
-            
-        user_jk, user = row
-        jk_id = user_jk.jk_id
+        # Используем переданные данные вместо запросов к БД
+        jk_id = jk_data.id
         
         # Конвертируем категорию в enum
         category_enum = OfferCategory.from_string(category)
@@ -45,22 +44,21 @@ async def notify_service_provider(session: AsyncSession, bot, offer, user_jk_id:
             print(f"⚠️ Поставщик услуг {service_provider.organization_name} отключил уведомления")
             return
             
-        # Получаем информацию о ЖК
-        jk = await orm_get_jk_by_id(session, jk_id)
-        jk_name = jk.name if jk else f"ЖК #{jk_id}"
+        # Используем переданные данные вместо дополнительных запросов
+        jk_name = jk_data.name
         
-        # Формируем информацию о заявителе
-        user_info = f"{user.first_name or ''}"
-        if user.last_name:
-            user_info += f" {user.last_name}"
-        if user.username:
-            user_info += f" (@{user.username})"
+        # Формируем информацию о заявителе из переданных данных
+        user_info = f"{user_data.first_name or ''}"
+        if user_data.last_name:
+            user_info += f" {user_data.last_name}"
+        if user_data.username:
+            user_info += f" (@{user_data.username})"
             
-        # Формируем контактную информацию
-        contact_info = user.phone or "не указан"
+        # Формируем контактную информацию из переданных данных
+        contact_info = user_data.phone or "не указан"
         
-        # Формируем информацию о квартире
-        apartment_info = user_jk.appartment or "не указана"
+        # Формируем информацию о квартире из переданных данных
+        apartment_info = user_jk_data.appartment or "не указана"
         
         # Формируем сообщение
         notification_text = (
@@ -99,7 +97,7 @@ async def notify_service_provider(session: AsyncSession, bot, offer, user_jk_id:
             [
                 InlineKeyboardButton(
                     text="📞 Связаться", 
-                    url=f"tg://user?id={user.user_id}"
+                    url=f"tg://user?id={user_data.user_id}"
                 ),
                 InlineKeyboardButton(
                     text="📋 Управление", 

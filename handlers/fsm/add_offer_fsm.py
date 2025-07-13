@@ -35,13 +35,12 @@ OFFER_CATEGORIES = {
 
 class AddOffer(StatesGroup):
     """Состояния для создания заявки."""
-
-    choose_jk = State()  # Выбор ЖК (если нужно)
-    choose_category = State()  # Выбор категории
-    set_title = State()  # Ввод названия
+    choose_jk = State()        # Выбор ЖК (ВСЕГДА первый шаг)
+    choose_category = State()  # Выбор категории  
+    set_title = State()        # Ввод названия
     set_description = State()  # Ввод описания
-    set_media = State()  # Загрузка фото/видео (опционально)
-    confirm = State()  # Подтверждение заявки
+    set_media = State()        # Загрузка медиа
+    confirm = State()          # Подтверждение
 
 
 def get_categories_keyboard():
@@ -78,57 +77,66 @@ async def start_add_offer(message: Message, state: FSMContext, session: AsyncSes
         return
         
     user_id = message.from_user.id
-
     jk_by_user = await orm_get_jks_by_user_id(session, user_id)
+    
     if not jk_by_user:
         await message.answer(
-            "❌ Для подачи заявки необходимо сначала привязаться к жилому комплексу.\n"
+            "❌ Для подачи заявки необходимо сначала привязаться к ЖК.\n"
             "Используйте команду /add_my_jk"
         )
         return
 
-    # Если ЖК несколько — предлагаем выбрать
-    if len(jk_by_user) > 1:
-        kb = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [
-                    InlineKeyboardButton(
-                        text=f"{jk.name}, {jk.city}, {jk.street}, {jk.house}",
-                        callback_data=f"choose_jk:{user_jk.id}",
-                    )
-                ]
-                for jk, user_jk in jk_by_user
+    # ВСЕГДА показываем выбор ЖК (даже если один)
+    kb = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=f"🏢 {jk.name}, кв. {user_jk.appartment}",
+                    callback_data=f"choose_jk:{user_jk.id}"
+                )
             ]
-        )
-        await state.set_state(AddOffer.choose_jk)
-        await message.answer(
-            "🏢 У вас несколько ЖК. Выберите, для какого дома оформить заявку:",
-            reply_markup=kb,
-        )
-        return
-
-    # Если ЖК только один — сразу сохраняем user_jk_id и переходим к категориям
-    jk, user_jk = jk_by_user[0]
-    await state.update_data(user_jk_id=user_jk.id)
-    await state.set_state(AddOffer.choose_category)
+            for jk, user_jk in jk_by_user
+        ]
+    )
+    
+    await state.set_state(AddOffer.choose_jk)
     await message.answer(
-        "📋 <b>Создание заявки</b>\n\n" "Укажите, с чем связана ваша заявка:",
+        "🏢 <b>Выберите ЖК для создания заявки:</b>",
         parse_mode="HTML",
-        reply_markup=get_categories_keyboard(),
+        reply_markup=kb
     )
 
 
-@add_offer_router.callback_query(
-    StateFilter(AddOffer.choose_jk), F.data.startswith("choose_jk:")
-)
-async def choose_jk(callback: CallbackQuery, state: FSMContext):
+@add_offer_router.callback_query(F.data.startswith("choose_jk:"))
+async def choose_jk(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     user_jk_id = int(callback.data.split(":")[1])
-    await state.update_data(user_jk_id=user_jk_id)
+    
+    # Получаем полные данные ЖК и UserJK для сохранения в state
+    from database.models.orm_user_jk import orm_get_user_jk_with_jk_by_id
+    user_jk_data = await orm_get_user_jk_with_jk_by_id(session, user_jk_id)
+    
+    if not user_jk_data:
+        await callback.answer("❌ ЖК не найден")
+        return
+    
+    user_jk, jk = user_jk_data
+    
+    # Сохраняем ВСЕ данные в state чтобы не делать повторные запросы
+    await state.update_data(
+        user_jk_id=user_jk_id,
+        jk_id=jk.id,
+        jk_name=jk.name,
+        apartment=user_jk.appartment,
+        jk_data=jk,  # Полные данные ЖК
+        user_jk_data=user_jk  # Полные данные UserJK
+    )
+    
     await state.set_state(AddOffer.choose_category)
     await callback.message.edit_text(
-        "📋 <b>Создание заявки</b>\n\n" "Укажите, с чем связана ваша заявка:",
+        f"✅ <b>Выбран ЖК:</b> {jk.name}, кв. {user_jk.appartment}\n\n"
+        "📋 Укажите категорию заявки:",
         parse_mode="HTML",
-        reply_markup=get_categories_keyboard(),
+        reply_markup=get_categories_keyboard()
     )
     await callback.answer()
 
@@ -312,7 +320,20 @@ async def confirm_offer(
     )
 
     # Уведомляем поставщика услуг о новой заявке
-    await notify_service_provider(session, callback.bot, offer, user_jk_id, data["category"])
+    # Получаем данные пользователя для уведомления
+    from database.models.orm_user import orm_get_user_by_id
+    user_data = await orm_get_user_by_id(session, user_id)
+    
+    # Вызываем с полными данными из state
+    await notify_service_provider(
+        session, 
+        callback.bot, 
+        offer, 
+        data['jk_data'],      # Данные ЖК из state
+        data['user_jk_data'], # Данные UserJK из state
+        user_data,            # Данные User
+        data["category"]
+    )
 
     await state.clear()
     await callback.answer("Заявка создана!")

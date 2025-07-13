@@ -163,3 +163,13 @@ async def orm_set_user_jk_admin(session: AsyncSession, user_id: int, jk_id: int,
         await session.flush()
         return user_jk
     return None
+
+
+async def orm_get_user_jk_with_jk_by_id(session: AsyncSession, user_jk_id: int):
+    """Получение UserJK с данными JK по user_jk_id"""
+    result = await session.execute(
+        select(UserJK, JK)
+        .join(JK, UserJK.jk_id == JK.id)
+        .where(UserJK.id == user_jk_id)
+    )
+    return result.first()  # Возвращает (UserJK, JK) или None
