@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Qyzmeta | Цифровизация ЖКХ Казахстана</title>
+    <meta name="description" content="Qyzmeta - платформа для управления многоквартирными домами. Автоматизация заявок жителей, удобство для УК, экономия до 200,000 ₸ в месяц." />
+    <meta name="keywords" content="ЖКХ, управляющая компания, заявки жителей, автоматизация, Казахстан, Telegram бот" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #E85D25 0%, #FF6B35 25%, #E8974E 50%, #D4943B 75%, #C8941F 100%);
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Header */
+        .header {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 1rem 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(255, 107, 53, 0.1);
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #E85D25, #FF6B35);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .nav-links {
+            display: flex;
+            list-style: none;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: #333;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: #E85D25;
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 120px 0 80px;
+            text-align: center;
+            color: white;
+        }
+
+        .hero h1 {
+            font-size: 3.5rem;
+            margin-bottom: 1.5rem;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+
+        .hero .subtitle {
+            font-size: 1.3rem;
+            margin-bottom: 2rem;
+            opacity: 0.95;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 3rem;
+        }
+
+        .btn {
+            padding: 15px 30px;
+            border: none;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: white;
+            color: #E85D25;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: 2px solid white;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: #E85D25;
+        }
+
+        /* Stats Section */
+        .stats {
+            background: white;
+            padding: 60px 0;
+            margin-top: -40px;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 2rem;
+            text-align: center;
+        }
+
+        .stat-item {
+            padding: 1.5rem;
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #E85D25;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            color: #666;
+            font-size: 1.1rem;
+        }
+
+        /* Features Section */
+        .features {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+
+        .section-title {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: #333;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .feature-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-title {
+            font-size: 1.3rem;
+            margin-bottom: 1rem;
+            color: #E85D25;
+        }
+
+        /* Target Audience */
+        .audience {
+            padding: 80px 0;
+            background: linear-gradient(135deg, #E85D25, #FF6B35);
+            color: white;
+        }
+
+        .audience-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .audience-card {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Contact Section */
+        .contact {
+            padding: 80px 0;
+            background: white;
+        }
+
+        .contact-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 3rem;
+        }
+
+        .contact-info h3 {
+            color: #E85D25;
+            margin-bottom: 1rem;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 1rem;
+            gap: 1rem;
+        }
+
+        .contact-icon {
+            font-size: 1.5rem;
+            color: #E85D25;
+        }
+
+        /* Footer */
+        .footer {
+            background: #333;
+            color: white;
+            text-align: center;
+            padding: 2rem 0;
+        }
+
+        /* Roadmap Section */
+        .roadmap {
+            padding: 80px 0;
+            background: #f8f9fa;
+        }
+
+        .roadmap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+        }
+
+        .roadmap-item {
+            background: white;
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            border-left: 5px solid #E85D25;
+            transition: transform 0.3s;
+        }
+
+        .roadmap-item:hover {
+            transform: translateY(-5px);
+        }
+
+        .roadmap-quarter {
+            background: linear-gradient(135deg, #E85D25, #FF6B35);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-weight: bold;
+            font-size: 0.9rem;
+            display: inline-block;
+            margin-bottom: 1rem;
+        }
+
+        .roadmap-item h3 {
+            color: #E85D25;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .roadmap-item p {
+            color: #666;
+            line-height: 1.6;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 {
+                font-size: 2.5rem;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav container">
+            <div class="logo">Qyzmeta</div>
+            <ul class="nav-links">
+                <li><a href="#features">Возможности</a></li>
+                <li><a href="#roadmap">Развитие</a></li>
+                <li><a href="#audience">Для кого</a></li>
+                <li><a href="#contact">Контакты</a></li>
+            </ul>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="container">
+            <h1>Цифровая платформа для ЖКХ Казахстана</h1>
+            <p class="subtitle">
+                Qyzmeta помогает управляющим компаниям автоматизировать работу с заявками жителей. 
+                Начните с Telegram-бота и развивайтесь вместе с нами.
+            </p>
+            <div class="cta-buttons">
+                <!-- <a href="https://t.me/qyzmetabot" class="btn btn-primary">🤖 Попробовать бота</a> -->
+                <a href="tel:+77779000305" class="btn btn-secondary">📞 Получить консультацию</a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Stats -->
+    <section class="stats">
+        <div class="container">
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-number">80%</div>
+                    <div class="stat-label">снижение нагрузки на call-центр</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">200k ₸</div>
+                    <div class="stat-label">экономия в месяц для УК</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">прием заявок без выходных</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">95%</div>
+                    <div class="stat-label">удовлетворенность жителей</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features -->
+    <section class="features" id="features">
+        <div class="container">
+            <h2 class="section-title">Почему Qyzmeta?</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📱</div>
+                    <h3 class="feature-title">Простота для жителей</h3>
+                    <p>Создание заявки одним касанием с прикреплением фото. Отслеживание статуса в реальном времени.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3 class="feature-title">Автоматизация для УК</h3>
+                    <p>Умное распределение заявок, снижение нагрузки на персонал, централизованное управление.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💰</div>
+                    <h3 class="feature-title">Экономия бюджета</h3>
+                    <p>До 200,000 ₸ экономии в месяц за счет автоматизации и оптимизации процессов.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3 class="feature-title">Отчеты и контроль</h3>
+                    <p>Базовая отчетность по заявкам, контроль исполнения, планы развития аналитики.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔧</div>
+                    <h3 class="feature-title">Для сервисных компаний</h3>
+                    <p>Прямой доступ к заявкам, планирование работ, система рейтингов и отзывов.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🛡️</div>
+                    <h3 class="feature-title">Надежность и безопасность</h3>
+                    <p>Шифрование данных, аудит действий, соответствие требованиям безопасности.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Roadmap -->
+    <section class="roadmap" id="roadmap">
+        <div class="container">
+            <h2 class="section-title">Планы развития Qyzmeta</h2>
+            <div class="roadmap-grid">
+                <div class="roadmap-item">
+                    <div class="roadmap-quarter">2025 Q3</div>
+                    <h3>Продакшн тест</h3>
+                    <p>Запуск пилотного проекта. Тестирование основного функционала.</p>
+                </div>
+                <div class="roadmap-item">
+                    <div class="roadmap-quarter">2025 Q4</div>
+                    <h3>Интеграция экосистемы</h3>
+                    <p>Подключение ЖК, УК и сервисных организаций. Масштабирование.</p>
+                </div>
+                <div class="roadmap-item">
+                    <div class="roadmap-quarter">2026</div>
+                    <h3>Web-приложение</h3>
+                    <p>Разработка полноценного веб-интерфейса. Интеграция с умными устройствами и IoT системами.</p>
+                </div>
+                <div class="roadmap-item">
+                    <div class="roadmap-quarter">2027</div>
+                    <h3>Технологии Web 3.0</h3>
+                    <p>Внедрение блокчейн решений, смарт-контрактов для сохранения цифрового следа.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Target Audience -->
+    <section class="audience" id="audience">
+        <div class="container">
+            <h2 class="section-title">Решения для каждого</h2>
+            <div class="audience-grid">
+                <div class="audience-card">
+                    <h3>🏢 Управляющие компании</h3>
+                    <ul>
+                        <li>• Автоматизация приема заявок 24/7</li>
+                        <li>• Снижение нагрузки на диспетчеров</li>
+                        <li>• Полная аналитика и отчетность</li>
+                        <li>• Повышение лояльности жителей</li>
+                    </ul>
+                </div>
+                <div class="audience-card">
+                    <h3>🏠 Жители</h3>
+                    <ul>
+                        <li>• Быстрое создание заявок с телефона</li>
+                        <li>• Отслеживание статуса заявок</li>
+                        <li>• История всех обращений</li>
+                        <li>• Абсолютно бесплатно</li>
+                    </ul>
+                </div>
+                <div class="audience-card">
+                    <h3>🔧 Сервисные организации</h3>
+                    <ul>
+                        <li>• Автоматическое получение заявок</li>
+                        <li>• Расширение клиентской базы</li>
+                        <li>• Система рейтингов и отзывов</li>
+                        <li>• Планирование и контроль работ</li>
+                    </ul>
+                </div>
+                <div class="audience-card">
+                    <h3>💼 Инвесторы</h3>
+                    <ul>
+                        <li>• Растущий рынок ЖКХ Казахстана</li>
+                        <li>• Социально значимый проект</li>
+                        <li>• Масштабируемая бизнес-модель</li>
+                        <li>• Внедрение бизнес-моделей</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact -->
+<section class="contact" id="contact" style="background-color: #f9f9f9; padding: 60px 0;">
+    <div class="container">
+
+        <div style="text-align: center; margin-bottom: 1.5rem;">
+            <p style="font-size: 1.1rem; margin: 0.5rem 0;">
+                📧 Пишите нам: 
+                <a href="mailto:info@softmontazh.kz" style="color: #007bff; text-decoration: underline;">
+                    info@softmontazh.kz
+                </a>
+            </p>
+            <p style="font-size: 1.1rem; margin: 0.5rem 0;">
+                📞 Звоните: 
+                <a href="tel:+77779000305" style="color: #007bff; text-decoration: underline;">
+                    +7 777 900 03 05
+                </a>
+            </p>
+        </div>
+
+        <!-- <div style="text-align: center; margin-top: 3rem;">
+            <a href="https://t.me/qyzmetabot" class="btn btn-primary" style="
+                font-size: 1.2rem; 
+                padding: 18px 36px; 
+                background-color: #007bff; 
+                color: white; 
+                border-radius: 10px;
+                text-decoration: none;
+                transition: background-color 0.3s ease;">
+                🚀 Начать использовать прямо сейчас
+            </a>
+        </div> -->
+
+    </div>
+</section>
+
+
+
+    <!-- Footer -->
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Softmontazh. Qyzmeta. Все права защищены.</p>
+
+        </div>
+    </footer>
+</body>
+
+</html>
