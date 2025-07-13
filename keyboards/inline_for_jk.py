@@ -52,6 +52,11 @@ def unlink_keyboard(id_user_jk: int) -> InlineKeyboardMarkup:
         inline_keyboard=[
             [
                 InlineKeyboardButton(
+                    text="🏢 Сервисные компании", callback_data=f"view_service_providers:{id_user_jk}"
+                )
+            ],
+            [
+                InlineKeyboardButton(
                     text="Отменить регистрацию", callback_data=f"unlink:{id_user_jk}"
                 )
             ]

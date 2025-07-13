@@ -19,6 +19,7 @@ from handlers.fsm.manage_service_providers_fsm import manage_service_providers_r
 from handlers.control_service_provider_kb import control_service_provider_router
 from handlers.fsm.manage_offer_status_fsm import manage_offer_status_router
 from handlers.offer_status_handlers import offer_status_router
+from handlers.service_providers_view import router as service_providers_view_router
 from services.bus_service import bus_service
 
 from common.bot_cmds_list import cmds_list
@@ -39,6 +40,7 @@ dp.include_router(user_private_router)  # для личных сообщений
 dp.include_router(manage_jk_router)  # для управления ЖК (должен быть до user_group)
 dp.include_router(manage_service_providers_router)  # для управления поставщиками услуг
 dp.include_router(control_service_provider_router)  # для кнопок управления поставщиками
+dp.include_router(service_providers_view_router)  # для просмотра поставщиков услуг
 dp.include_router(manage_offer_status_router)  # для управления статусами заявок
 dp.include_router(offer_status_router)  # для управления статусами через кнопки
 dp.include_router(user_group_router)  # для групповых чатов
