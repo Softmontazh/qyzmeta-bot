@@ -60,34 +60,49 @@ async def start_manage_offer_status(message: Message, state: FSMContext, session
     """Начало управления статусом заявки (только для поставщиков услуг)."""
     user_id = message.from_user.id
     
-    # Проверяем, является ли пользователь поставщиком услуг
+    # Проверяем, является ли пользователь АКТИВНЫМ поставщиком услуг
     service_providers = await orm_get_service_providers_by_user(session, user_id)
+    active_providers = [sp for sp in service_providers if sp.is_active]
     
-    if not service_providers:
+    if not active_providers:
         await message.answer(
-            "❌ У вас нет прав для управления статусами заявок.\n"
-            "Эта функция доступна только поставщикам услуг."
+            "❌ У вас нет активных прав для управления статусами заявок.\n"
+            "Эта функция доступна только активным поставщикам услуг."
         )
         return
     
     await message.answer(
         "🔧 <b>Управление статусом заявки</b>\n\n"
         "Отправьте номер заявки для изменения её статуса.\n"
-        "Например: <code>123</code>",
-        parse_mode="HTML"
+        "Например: <code>123</code>\n\n"
+        "Или нажмите \"Отмена\" для выхода.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="❌ Отмена", callback_data="cancel_manage_status")]
+            ]
+        )
     )
     await state.set_state(ManageOfferStatus.select_offer)
 
 
 @manage_offer_status_router.message(ManageOfferStatus.select_offer)
 async def select_offer(message: Message, state: FSMContext, session: AsyncSession):
-    """Обработка выбора заявки по номеру."""
+    """Обработка выбора заявки по номеру с проверкой принадлежности."""
+    
+    # Проверяем команды отмены
+    if message.text.strip().lower() in ["❌ отмена", "/cancel", "/start", "/menu"]:
+        await message.answer("❌ Выбор заявки отменен")
+        await state.clear()
+        return
+    
     try:
         offer_id = int(message.text.strip())
     except ValueError:
         await message.answer(
             "❌ Неверный формат номера заявки. Введите число.\n"
-            "Например: <code>123</code>",
+            "Например: <code>123</code>\n\n"
+            "Или отправьте /cancel для отмены.",
             parse_mode="HTML"
         )
         return
@@ -99,21 +114,41 @@ async def select_offer(message: Message, state: FSMContext, session: AsyncSessio
         await message.answer(f"❌ Заявка №{offer_id} не найдена.")
         return
     
-    # Проверяем, что пользователь имеет право управлять этой заявкой
+    # СТРОГАЯ ПРОВЕРКА ПРИНАДЛЕЖНОСТИ
     user_id = message.from_user.id
     service_providers = await orm_get_service_providers_by_user(session, user_id)
     
-    # Проверяем, что пользователь является поставщиком услуг для ЖК этой заявки
+    # Проверяем, что пользователь является АКТИВНЫМ поставщиком услуг
+    active_providers = [sp for sp in service_providers if sp.is_active]
+    
+    if not active_providers:
+        await message.answer(
+            "❌ У вас нет активных категорий услуг.\n"
+            "Обратитесь к администратору для активации."
+        )
+        await state.clear()
+        return
+    
+    # Проверяем, что заявка относится к ЖК и категории пользователя
     has_access = False
-    for sp in service_providers:
-        if sp.jk_id == offer.user_jk.jk_id:
+    user_jk_id = offer.user_jk.jk_id
+    offer_category = offer.category
+    
+    for sp in active_providers:
+        # Проверяем ЖК И категорию
+        if sp.jk_id == user_jk_id and sp.category.value == offer_category:
             has_access = True
             break
     
     if not has_access:
         await message.answer(
-            f"❌ У вас нет прав для управления заявкой №{offer_id}.\n"
-            "Вы можете управлять только заявками из ваших ЖК."
+            f"❌ <b>Нет доступа к заявке №{offer_id}</b>\n\n"
+            f"Причины:\n"
+            f"• Заявка не из вашего ЖК\n"
+            f"• Категория заявки не входит в ваши обязанности\n"
+            f"• Вы не являетесь активным поставщиком услуг\n\n"
+            f"Вы можете управлять только заявками из ваших активных категорий.",
+            parse_mode="HTML"
         )
         return
     
@@ -121,8 +156,8 @@ async def select_offer(message: Message, state: FSMContext, session: AsyncSessio
     try:
         from database.enums.offer_category_enum import OfferCategory
         category_enum = OfferCategory.from_string(offer.category)
-        category_display = OfferCategory.get_display_name(category_enum)
-        category_emoji = OfferCategory.get_emoji(category_enum)
+        category_display = category_enum.display_name
+        category_emoji = category_enum.emoji
     except:
         category_display = offer.category
         category_emoji = "📝"
@@ -199,4 +234,40 @@ async def cancel_status_change(callback: CallbackQuery, state: FSMContext):
     """Отмена изменения статуса."""
     await callback.message.edit_text("❌ Изменение статуса отменено.")
     await callback.answer("Отменено")
+    await state.clear()
+
+
+@manage_offer_status_router.callback_query(F.data == "cancel_manage_status")
+async def cancel_manage_status(callback: CallbackQuery, state: FSMContext):
+    """Отмена управления статусом через кнопку"""
+    await callback.message.edit_text(
+        "❌ <b>Управление статусом отменено</b>",
+        parse_mode="HTML"
+    )
+    await state.clear()
+    await callback.answer("Отменено")
+
+
+@manage_offer_status_router.message(StateFilter(ManageOfferStatus.select_offer), F.text.in_(["❌ Отмена", "/cancel", "/start"]))
+async def cancel_offer_selection(message: Message, state: FSMContext):
+    """Отмена выбора заявки через текстовые команды"""
+    await message.answer(
+        "❌ <b>Выбор заявки отменен</b>\n\n"
+        "Для управления статусами заявок используйте команду из меню поставщика услуг.",
+        parse_mode="HTML"
+    )
+    await state.clear()
+
+
+@manage_offer_status_router.message(StateFilter(ManageOfferStatus.select_offer), Command("menu"))
+async def return_to_menu_from_fsm(message: Message, state: FSMContext):
+    """Возврат в главное меню из FSM"""
+    from keyboards.reply import MAIN_KB
+    
+    await message.answer(
+        "🏠 <b>Главное меню</b>\n\n"
+        "Выбор заявки отменен.",
+        parse_mode="HTML",
+        reply_markup=MAIN_KB
+    )
     await state.clear()

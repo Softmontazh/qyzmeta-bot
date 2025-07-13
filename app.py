@@ -21,6 +21,7 @@ from handlers.fsm.manage_offer_status_fsm import manage_offer_status_router
 from handlers.offer_status_handlers import offer_status_router
 from handlers.service_providers_view import router as service_providers_view_router
 from handlers.service_provider_panel import service_provider_panel_router
+from handlers.fsm.become_service_provider_fsm import become_service_provider_router
 from services.bus_service import bus_service
 
 from common.bot_cmds_list import cmds_list
@@ -42,6 +43,7 @@ dp.include_router(manage_jk_router)  # для управления ЖК (дол�
 dp.include_router(manage_service_providers_router)  # для управления поставщиками услуг
 dp.include_router(control_service_provider_router)  # для кнопок управления поставщиками
 dp.include_router(service_providers_view_router)  # для просмотра поставщиков услуг
+dp.include_router(become_service_provider_router)  # для подачи заявок на статус поставщика услуг
 dp.include_router(manage_offer_status_router)  # для управления статусами заявок (до панели поставщика)
 dp.include_router(service_provider_panel_router)  # для панели управления поставщиков услуг
 dp.include_router(offer_status_router)  # для управления статусами через кнопки

@@ -10,57 +10,20 @@ from database.enums.offer_category_enum import OfferCategory
 
 
 async def orm_add_service_provider(session: AsyncSession, service_data: dict) -> JKServiceProvider:
-    """Добавить нового поставщика услуг для ЖК"""
-    from database.models.orm_user import orm_update_user_role
-    from database.enums.user_enums import UserRole
+    """Добавить нового поставщика услуг для ЖК БЕЗ изменения роли"""
+    
+    # ПРИНУДИТЕЛЬНО УСТАНАВЛИВАЕМ is_active=False
+    service_data['is_active'] = False
     
     # Создаем поставщика услуг
     service_provider = JKServiceProvider(**service_data)
+    
     session.add(service_provider)
     await session.flush()
-    
-    # Автоматически обновляем роль ответственного пользователя на SERVICE_PROVIDER
-    if 'responsible_user_id' in service_data and service_data['responsible_user_id']:
-        try:
-            from database.models.orm_user import orm_get_user_by_id
-            import os
-            
-            # Проверяем, не является ли пользователь создателем по CREATOR_ID из env
-            creator_ids = os.getenv("CREATOR_ID")
-            is_creator_by_env = creator_ids and str(service_data['responsible_user_id']) in creator_ids.split(",")
-            
-            # Если это создатель по env - НЕ меняем роль
-            if is_creator_by_env:
-                print(f"Пользователь {service_data['responsible_user_id']} является создателем (CREATOR_ID) - роль не изменена")
-                return service_provider
-            
-            # Получаем текущего пользователя
-            user = await orm_get_user_by_id(session, service_data['responsible_user_id'])
-            
-            if user:
-                # Список административных ролей, которые НЕ нужно менять
-                admin_roles = {
-                    UserRole.CREATOR,
-                    UserRole.ADMIN, 
-                    UserRole.SUPERADMIN,
-                    UserRole.MODERATOR,
-                    UserRole.MANAGER
-                }
-                
-                # Меняем роль только если это не админ и не уже поставщик услуг
-                if user.role not in admin_roles and user.role != UserRole.SERVICE_PROVIDER:
-                    await orm_update_user_role(
-                        session, 
-                        service_data['responsible_user_id'], 
-                        UserRole.SERVICE_PROVIDER
-                    )
-                    print(f"Роль пользователя {service_data['responsible_user_id']} изменена на SERVICE_PROVIDER")
-                else:
-                    print(f"Роль пользователя {service_data['responsible_user_id']} ({user.role}) не изменена - административная роль")
-                    
-        except ValueError as e:
-            # Если пользователь не найден, логируем ошибку, но не прерываем процесс
-            print(f"Предупреждение: не удалось обновить роль пользователя {service_data['responsible_user_id']}: {e}")
+    await session.refresh(service_provider)
+
+    # УБИРАЕМ ВЕСЬ БЛОК АВТОМАТИЧЕСКОГО ИЗМЕНЕНИЯ РОЛИ
+    # Роль будет изменена только при активации администратором
     
     return service_provider
 
@@ -68,6 +31,17 @@ async def orm_add_service_provider(session: AsyncSession, service_data: dict) ->
 async def orm_get_service_provider_by_id(session: AsyncSession, provider_id: int) -> Optional[JKServiceProvider]:
     """Получить поставщика услуг по ID"""
     stmt = select(JKServiceProvider).where(JKServiceProvider.id == provider_id)
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def orm_get_service_provider_by_id_with_jk(session: AsyncSession, provider_id: int) -> Optional[JKServiceProvider]:
+    """Получить поставщика услуг по ID с загруженным ЖК"""
+    stmt = select(JKServiceProvider).where(
+        JKServiceProvider.id == provider_id
+    ).options(
+        selectinload(JKServiceProvider.jk)
+    )
     result = await session.execute(stmt)
     return result.scalar_one_or_none()
 
@@ -206,3 +180,154 @@ async def orm_get_service_providers_by_category_and_jk(
     
     result = await session.execute(stmt)
     return result.scalars().all()
+
+
+async def orm_get_user_service_provider_requests(session: AsyncSession, user_id: int) -> List[JKServiceProvider]:
+    """Получить все заявки пользователя на статус поставщика услуг"""
+    stmt = select(JKServiceProvider).where(
+        JKServiceProvider.responsible_user_id == user_id
+    ).options(selectinload(JKServiceProvider.jk))
+    
+    result = await session.execute(stmt)
+    return result.scalars().all()
+
+
+async def orm_create_service_provider_request(
+    session: AsyncSession,
+    jk_id: int,
+    category: str,
+    responsible_user_id: int,
+    organization_name: str,
+    contact_phone: str,
+    contact_email: Optional[str] = None,
+    description: Optional[str] = None,
+    is_active: bool = False
+) -> int:
+    """Создать заявку на статус поставщика услуг БЕЗ изменения роли пользователя"""
+    
+    service_provider = JKServiceProvider(
+        jk_id=jk_id,
+        category=OfferCategory.from_string(category),
+        responsible_user_id=responsible_user_id,
+        organization_name=organization_name,
+        contact_phone=contact_phone,
+        contact_email=contact_email,
+        description=description,
+        is_active=False,  # ПРИНУДИТЕЛЬНО FALSE
+        receives_notifications=True,
+        auto_assign_offers=True,
+        priority=1,
+        created_by_user_id=responsible_user_id
+    )
+    
+    session.add(service_provider)
+    await session.flush()
+    await session.refresh(service_provider)
+
+    # НЕ МЕНЯЕМ РОЛЬ - только создаем заявку
+    # Роль будет изменена администратором при активации
+    
+    return service_provider.id
+
+
+async def orm_activate_service_provider_request(
+    session: AsyncSession, 
+    provider_id: int, 
+    activated_by_user_id: int
+) -> bool:
+    """Активировать заявку поставщика услуг и изменить роль пользователя"""
+    from database.models.orm_user import orm_update_user_role, orm_get_user_by_id
+    from database.enums.user_enums import UserRole
+    from datetime import datetime
+    import os
+    
+    # Получаем заявку
+    provider = await orm_get_service_provider_by_id(session, provider_id)
+    if not provider or provider.is_active:
+        return False
+    
+    # Активируем заявку
+    stmt = update(JKServiceProvider).where(
+        JKServiceProvider.id == provider_id
+    ).values(
+        is_active=True,
+        updated_at=datetime.utcnow()
+    )
+    
+    result = await session.execute(stmt)
+    if result.rowcount == 0:
+        return False
+    
+    # МЕНЯЕМ РОЛЬ ПОЛЬЗОВАТЕЛЯ НА SERVICE_PROVIDER
+    try:
+        # Проверяем, не является ли пользователь создателем по CREATOR_ID
+        creator_ids = os.getenv("CREATOR_ID")
+        is_creator_by_env = creator_ids and str(provider.responsible_user_id) in creator_ids.split(",")
+        
+        if is_creator_by_env:
+            print(f"Пользователь {provider.responsible_user_id} является создателем - роль не изменена")
+            return True
+        
+        # Получаем пользователя
+        user = await orm_get_user_by_id(session, provider.responsible_user_id)
+        if not user:
+            return False
+        
+        # Список ролей, которые НЕ нужно менять
+        admin_roles = {
+            UserRole.CREATOR,
+            UserRole.ADMIN, 
+            UserRole.SUPERADMIN,
+            UserRole.MODERATOR,
+            UserRole.MANAGER
+        }
+        
+        # Меняем роль только если это USER
+        if user.role not in admin_roles:
+            await orm_update_user_role(
+                session, 
+                provider.responsible_user_id, 
+                UserRole.SERVICE_PROVIDER
+            )
+            print(f"Роль пользователя {provider.responsible_user_id} изменена на SERVICE_PROVIDER")
+        
+        return True
+        
+    except Exception as e:
+        print(f"Ошибка при изменении роли: {e}")
+        return False
+
+
+async def orm_reject_service_provider_request(
+    session: AsyncSession, 
+    provider_id: int, 
+    rejected_by_user_id: int
+) -> bool:
+    """Отклонить заявку поставщика услуг"""
+    
+    # Удаляем заявку из базы
+    stmt = delete(JKServiceProvider).where(JKServiceProvider.id == provider_id)
+    result = await session.execute(stmt)
+    
+    return result.rowcount > 0
+
+
+async def orm_get_pending_service_provider_requests(
+    session: AsyncSession,
+    jk_id: Optional[int] = None
+) -> List[JKServiceProvider]:
+    """Получить все заявки в ожидании одобрения (is_active = false)"""
+    
+    stmt = select(JKServiceProvider).where(
+        JKServiceProvider.is_active == False
+    ).options(
+        selectinload(JKServiceProvider.jk)
+    ).order_by(JKServiceProvider.created_at.desc())
+    
+    if jk_id:
+        stmt = stmt.where(JKServiceProvider.jk_id == jk_id)
+    
+    result = await session.execute(stmt)
+    pending_requests = result.scalars().all()
+    
+    return pending_requests

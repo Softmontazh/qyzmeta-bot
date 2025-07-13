@@ -32,6 +32,16 @@ def escape_html(text: str) -> str:
                 .replace("'", '&#x27;'))
 
 
+def escape_for_button_text(text: str) -> str:
+    """Экранирует текст для использования в кнопках (БЕЗ замены кавычек)"""
+    if not text:
+        return ""
+    return (text.replace('&', '&amp;')
+                .replace('<', '&lt;')
+                .replace('>', '&gt;'))
+    # НЕ заменяем кавычки - они нормально отображаются в тексте кнопок
+
+
 def check_message_length(text: str, max_length: int = 4096) -> str:
     """Проверяет и обрезает сообщение если оно слишком длинное"""
     if len(text) > max_length:
@@ -84,7 +94,7 @@ def create_service_providers_keyboard(providers: list, current_page: int = 0, to
     # Кнопки с поставщиками (по 1 на строку для лучшего отображения)
     for provider in providers:
         # Создаем текст кнопки с названием и категорией
-        button_text = f"🏢 {escape_html(provider.organization_name)}"
+        button_text = f"🏢 {escape_for_button_text(provider.organization_name)}"
         if provider.category:
             # Получаем русское название категории
             category_names = {
@@ -103,7 +113,7 @@ def create_service_providers_keyboard(providers: list, current_page: int = 0, to
                 category_enum = provider.category
             
             category_display = category_names.get(category_enum, category_enum.display_name)
-            button_text += f" | {category_display}"
+            button_text += f" | {escape_for_button_text(category_display)}"
         
         keyboard.append([
             InlineKeyboardButton(

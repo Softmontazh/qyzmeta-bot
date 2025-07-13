@@ -88,10 +88,10 @@ class JKServiceProvider(Base):
     # Статусы и настройки
     is_active: Mapped[bool] = mapped_column(
         Boolean, 
-        default=True, 
+        default=False,  # ИЗМЕНЕНО: False = на рассмотрении, True = активна
         nullable=False,
         index=True,
-        comment="Активна ли привязка"
+        comment="Активна ли привязка (False = на рассмотрении, True = активна)"
     )
     
     receives_notifications: Mapped[bool] = mapped_column(

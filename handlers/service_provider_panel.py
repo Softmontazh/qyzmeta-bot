@@ -25,30 +25,60 @@ async def show_service_provider_panel(message: Message, session: AsyncSession):
     user = await orm_get_user_by_id(session, user_id)
     
     if not user or user.role != UserRole.SERVICE_PROVIDER:
+        # Показываем кнопку подачи заявки БЕЗ проверки существующих заявок
+        from database.models.orm_jk_service_provider import orm_get_user_service_provider_requests
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="📝 Стать поставщиком услуг",
+                        callback_data="become_service_provider"
+                    )
+                ]
+            ]
+        )
+        
         await message.answer(
             "❌ <b>Доступ запрещен</b>\n\n"
-            "Эта панель доступна только для поставщиков услуг.\n"
-            "Если вы являетесь поставщиком услуг, обратитесь к администратору ЖК.",
-            parse_mode="HTML"
+            "Эта панель доступна только для поставщиков услуг.\n\n"
+            "💡 Хотите стать поставщиком услуг?\n"
+            "Подайте заявку на рассмотрение администратору.",
+            parse_mode="HTML",
+            reply_markup=keyboard
         )
         return
-    
-    # Проверяем, есть ли у пользователя назначенные сервисы
+
+    # Для пользователей с ролью SERVICE_PROVIDER проверяем АКТИВНЫЕ записи
     service_providers = await orm_get_service_providers_by_user(session, user_id)
+    active_providers = [sp for sp in service_providers if sp.is_active]
     
-    if not service_providers:
-        await message.answer(
-            "⚠️ <b>Сервисы не найдены</b>\n\n"
-            "У вас роль поставщика услуг, но вы не назначены ответственным "
-            "ни за одну категорию услуг.\n\n"
-            "Обратитесь к администратору ЖК для назначения сервисов.",
-            parse_mode="HTML"
-        )
-        return
+    if not active_providers:
+        # Есть записи, но неактивные - ждем активации
+        inactive_count = len([sp for sp in service_providers if not sp.is_active])
+        
+        if inactive_count > 0:
+            await message.answer(
+                f"⏳ <b>Ожидание активации</b>\n\n"
+                f"У вас есть {inactive_count} заявка(и) на статус поставщика услуг, "
+                f"но они еще не активированы администратором.\n\n"
+                f"Дождитесь активации или обратитесь к администратору ЖК.",
+                parse_mode="HTML"
+            )
+            return
+        else:
+            await message.answer(
+                "⚠️ <b>Сервисы не найдены</b>\n\n"
+                "У вас роль поставщика услуг, но нет назначенных категорий услуг.\n\n"
+                "Обратитесь к администратору ЖК для назначения сервисов.",
+                parse_mode="HTML"
+            )
+            return
     
     # Формируем приветственное сообщение
-    jk_count = len(set(sp.jk_id for sp in service_providers))
-    categories_count = len(service_providers)
+    jk_count = len(set(sp.jk_id for sp in active_providers))
+    categories_count = len(active_providers)
     
     user_name = user.first_name
     if user.last_name:
