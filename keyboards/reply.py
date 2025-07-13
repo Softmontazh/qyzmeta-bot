@@ -55,3 +55,12 @@ CONTROL_SERVICE_PROVIDER_KB = get_keyboard(
     placeholder="Управление поставщиками услуг",
     sizes=(1, 1, 1, 1, 1),
 )
+
+MANAGE_OFFER_STATUS_KB = get_keyboard(
+    "Управление статусами заявок 📝",
+    "Мои сервисы в ЖК 📝",
+    "Моя статистика 📊",
+    "Выход из режима сервисника",
+    placeholder="Управление статусами заявок",
+    sizes=(1, 1, 1, 1, 1),
+)

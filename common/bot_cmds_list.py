@@ -7,5 +7,5 @@ cmds_list = [
     BotCommand(command="start", description="Перезагрузить бота"),
     BotCommand(command="policy", description="Политика конфиденциальности"),
     BotCommand(command="support", description="Поддержка бота"),
-    BotCommand(command="manage_offer_status", description="Управление статусом заявки (для сервисников)"),
+    BotCommand(command="is_service", description="Я сервисник"),
 ]

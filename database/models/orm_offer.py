@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
 # database/models/orm_offer.py
 
-from sqlalchemy import select, update, delete, desc, func
+from sqlalchemy import select, update, delete, desc, func, and_, case
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 from database.models.model_offer import Offer
 from database.models.model_user_jk import UserJK
 from database.models.model_jk import JK
+from database.models.model_jk_service_provider import JKServiceProvider
 from database.enums.offer_enums import OfferStatus
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
+import datetime
 
 
 async def orm_add_offer(session: AsyncSession, data: dict) -> Offer:
@@ -205,3 +207,92 @@ async def orm_get_offer_with_user_info(session: AsyncSession, offer_id: int) -> 
         offer.user_jk.user = user
     
     return offer
+
+
+async def orm_get_service_provider_statistics(session: AsyncSession, user_id: int) -> Dict[str, Any]:
+    """
+    Получает статистику для поставщика услуг.
+    """
+    # Получаем все JKServiceProvider для данного пользователя
+    providers_result = await session.execute(
+        select(JKServiceProvider)
+        .where(JKServiceProvider.responsible_user_id == user_id)
+        .where(JKServiceProvider.is_active == True)
+        .options(selectinload(JKServiceProvider.jk))
+    )
+    providers = providers_result.scalars().all()
+    
+    if not providers:
+        return {
+            "total_offers": 0,
+            "completed_offers": 0,
+            "in_progress_offers": 0,
+            "cancelled_offers": 0,
+            "completion_rate": 0.0,
+            "avg_response_time_hours": 0.0,
+            "jk_list": []
+        }
+    
+    # Получаем все ЖК где пользователь является поставщиком услуг
+    jk_ids = [provider.jk_id for provider in providers]
+    categories = [provider.category.value if hasattr(provider.category, 'value') else provider.category for provider in providers]
+    
+    # Статистика по заявкам в этих ЖК с учетом категорий
+    stats_result = await session.execute(
+        select(
+            func.count().label("total_offers"),
+            func.sum(case((Offer.status == OfferStatus.COMPLETED, 1), else_=0)).label("completed_offers"),
+            func.sum(case((Offer.status == OfferStatus.IN_PROGRESS, 1), else_=0)).label("in_progress_offers"),
+            func.sum(case((Offer.status == OfferStatus.CANCELLED, 1), else_=0)).label("cancelled_offers")
+        )
+        .select_from(Offer)
+        .join(UserJK, Offer.user_jk_id == UserJK.id)
+        .where(
+            and_(
+                UserJK.jk_id.in_(jk_ids),
+                Offer.category.in_(categories)
+            )
+        )
+    )
+    
+    stats = stats_result.first()
+    
+    # Расчет среднего времени отклика для завершенных заявок
+    response_time_result = await session.execute(
+        select(
+            func.avg(
+                func.extract('epoch', Offer.updated_at) - func.extract('epoch', Offer.created_at)
+            ).label("avg_response_seconds")
+        )
+        .select_from(Offer)
+        .join(UserJK, Offer.user_jk_id == UserJK.id)
+        .where(
+            and_(
+                UserJK.jk_id.in_(jk_ids),
+                Offer.category.in_(categories),
+                Offer.status == OfferStatus.COMPLETED,
+                Offer.updated_at.isnot(None)
+            )
+        )
+    )
+    
+    avg_response_seconds = response_time_result.scalar() or 0
+    avg_response_hours = round(avg_response_seconds / 3600, 2) if avg_response_seconds else 0
+    
+    # Расчет коэффициента завершения
+    total_offers = stats.total_offers or 0
+    completed_offers = stats.completed_offers or 0
+    completion_rate = round((completed_offers / total_offers * 100), 2) if total_offers > 0 else 0
+    
+    # Список ЖК с названиями
+    jk_names = [provider.jk.name for provider in providers if provider.jk]
+    
+    return {
+        "total_offers": total_offers,
+        "completed_offers": completed_offers,
+        "in_progress_offers": stats.in_progress_offers or 0,
+        "cancelled_offers": stats.cancelled_offers or 0,
+        "completion_rate": completion_rate,
+        "avg_response_time_hours": avg_response_hours,
+        "jk_list": jk_names
+    }
