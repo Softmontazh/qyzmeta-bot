@@ -11,9 +11,57 @@ from database.enums.offer_category_enum import OfferCategory
 
 async def orm_add_service_provider(session: AsyncSession, service_data: dict) -> JKServiceProvider:
     """Добавить нового поставщика услуг для ЖК"""
+    from database.models.orm_user import orm_update_user_role
+    from database.enums.user_enums import UserRole
+    
+    # Создаем поставщика услуг
     service_provider = JKServiceProvider(**service_data)
     session.add(service_provider)
     await session.flush()
+    
+    # Автоматически обновляем роль ответственного пользователя на SERVICE_PROVIDER
+    if 'responsible_user_id' in service_data and service_data['responsible_user_id']:
+        try:
+            from database.models.orm_user import orm_get_user_by_id
+            import os
+            
+            # Проверяем, не является ли пользователь создателем по CREATOR_ID из env
+            creator_ids = os.getenv("CREATOR_ID")
+            is_creator_by_env = creator_ids and str(service_data['responsible_user_id']) in creator_ids.split(",")
+            
+            # Если это создатель по env - НЕ меняем роль
+            if is_creator_by_env:
+                print(f"Пользователь {service_data['responsible_user_id']} является создателем (CREATOR_ID) - роль не изменена")
+                return service_provider
+            
+            # Получаем текущего пользователя
+            user = await orm_get_user_by_id(session, service_data['responsible_user_id'])
+            
+            if user:
+                # Список административных ролей, которые НЕ нужно менять
+                admin_roles = {
+                    UserRole.CREATOR,
+                    UserRole.ADMIN, 
+                    UserRole.SUPERADMIN,
+                    UserRole.MODERATOR,
+                    UserRole.MANAGER
+                }
+                
+                # Меняем роль только если это не админ и не уже поставщик услуг
+                if user.role not in admin_roles and user.role != UserRole.SERVICE_PROVIDER:
+                    await orm_update_user_role(
+                        session, 
+                        service_data['responsible_user_id'], 
+                        UserRole.SERVICE_PROVIDER
+                    )
+                    print(f"Роль пользователя {service_data['responsible_user_id']} изменена на SERVICE_PROVIDER")
+                else:
+                    print(f"Роль пользователя {service_data['responsible_user_id']} ({user.role}) не изменена - административная роль")
+                    
+        except ValueError as e:
+            # Если пользователь не найден, логируем ошибку, но не прерываем процесс
+            print(f"Предупреждение: не удалось обновить роль пользователя {service_data['responsible_user_id']}: {e}")
+    
     return service_provider
 
 

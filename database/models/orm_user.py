@@ -50,6 +50,24 @@ async def orm_get_user_by_id(session: AsyncSession, user_id: int):
     )  # Возвращает пользователя или None, если не найден
 
 
+async def orm_update_user_role(session: AsyncSession, user_id: int, new_role):
+    """Обновление роли пользователя."""
+    from database.enums.user_enums import UserRole
+
+    # Если передан строковый enum, преобразуем в объект
+    if isinstance(new_role, str):
+        new_role = UserRole(new_role)
+
+    stmt = update(User).where(User.user_id == user_id).values(role=new_role)
+    result = await session.execute(stmt)
+
+    # Проверяем, был ли обновлен хотя бы один пользователь
+    if result.rowcount == 0:
+        raise ValueError(f"Пользователь с ID {user_id} не найден")
+
+    return result.rowcount
+
+
 async def orm_get_user_role(session: AsyncSession, user_id: int):
     """Получение роли пользователя по его ID."""
     query = select(User.role)

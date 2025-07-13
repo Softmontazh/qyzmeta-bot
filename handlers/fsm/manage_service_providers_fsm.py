@@ -234,24 +234,24 @@ async def handle_phone_input(message: Message, state: FSMContext, session: Async
     """Обработка ввода контактного телефона."""
     phone = message.text.strip()
     
-    # Валидируем телефон
-    validator = PhoneValidator()
-    if not validator.validate(phone):
+    # ИСПРАВЛЕНО: Использовать правильный метод валидации
+    is_valid, formatted_phone, error_msg = PhoneValidator.validate_and_format(phone)
+    
+    if not is_valid:
         await message.answer(
-            "❌ Неверный формат телефона.\n"
+            f"❌ {error_msg}\n"
             "Используйте формат: +7XXXXXXXXXX\n\n"
             "Попробуйте еще раз или нажмите 'Пропустить':",
             reply_markup=get_phone_input_keyboard()
         )
         return
     
-    # Нормализуем телефон
-    normalized_phone = validator.normalize(phone)
-    await state.update_data(contact_phone=normalized_phone)
+    # Сохраняем отформатированный телефон
+    await state.update_data(contact_phone=formatted_phone)
     await state.set_state(ManageServiceProviderStates.input_work_schedule)
     
     await message.answer(
-        f"✅ <b>Телефон:</b> {normalized_phone}\n\n"
+        f"✅ <b>Телефон:</b> {formatted_phone}\n\n"
         "🕒 <b>Введите рабочее время:</b>\n"
         "Например: 'Пн-Пт 9:00-18:00' или 'Круглосуточно'",
         parse_mode="HTML"
@@ -326,6 +326,7 @@ async def show_provider_confirmation(message: Message, state: FSMContext, sessio
 @manage_service_providers_router.callback_query(F.data == "confirm_create_provider")
 async def confirm_create_provider(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     """Подтверждение создания поставщика услуг."""
+    print(f"DEBUG: confirm_create_provider вызвана, callback.data = {callback.data}")
     data = await state.get_data()
     
     # Создаем поставщика услуг
@@ -335,9 +336,12 @@ async def confirm_create_provider(callback: CallbackQuery, state: FSMContext, se
         'organization_name': data['organization_name'],
         'responsible_user_id': data['responsible_user_id'],
         'contact_phone': data.get('contact_phone'),
-        'work_schedule': data['work_schedule'],
+        'description': f"Рабочее время: {data['work_schedule']}",  # Сохраняем рабочее время в описание
         'is_active': True,
-        'receives_notifications': True
+        'receives_notifications': True,
+        'auto_assign_offers': True,  # Автоматически назначать заявки
+        'priority': 1,  # Высший приоритет
+        'created_by_user_id': callback.from_user.id  # Кто создал запись
     }
     
     try:
@@ -348,13 +352,20 @@ async def confirm_create_provider(callback: CallbackQuery, state: FSMContext, se
         jk = await orm_get_jk_by_id(session, data['selected_jk_id'])
         category = OfferCategory(data['category'])
         
+        # ИСПРАВЛЕНО: Убираем reply_markup из edit_text
         await callback.message.edit_text(
             f"✅ <b>Поставщик услуг успешно создан!</b>\n\n"
             f"🏢 <b>ЖК:</b> {jk.name}\n"
             f"📑 <b>Категория:</b> {category.display_name} {category.emoji}\n"
             f"🏛️ <b>Организация:</b> {data['organization_name']}\n\n"
+            "✅ <b>Пользователь получил роль 'Поставщик услуг'</b>\n\n"
             "Поставщик получает уведомления о новых заявках по этой категории.",
-            parse_mode="HTML",
+            parse_mode="HTML"
+        )
+        
+        # ДОБАВЛЕНО: Отправляем отдельное сообщение с Reply клавиатурой
+        await callback.message.answer(
+            "🏠 Возвращайтесь в главное меню для продолжения работы:",
             reply_markup=MAIN_KB
         )
         
@@ -364,7 +375,12 @@ async def confirm_create_provider(callback: CallbackQuery, state: FSMContext, se
     except Exception as e:
         await session.rollback()  # Откатываем транзакцию в случае ошибки
         await callback.message.edit_text(
-            f"❌ Ошибка при создании поставщика услуг:\n{str(e)}",
+            f"❌ Ошибка при создании поставщика услуг:\n{str(e)}"
+        )
+        
+        # ДОБАВЛЕНО: Отправляем отдельное сообщение с Reply клавиатурой
+        await callback.message.answer(
+            "🏠 Возвращайтесь в главное меню:",
             reply_markup=MAIN_KB
         )
         await callback.answer("Ошибка создания")
@@ -373,10 +389,18 @@ async def confirm_create_provider(callback: CallbackQuery, state: FSMContext, se
 @manage_service_providers_router.callback_query(F.data == "cancel_add_provider")
 async def cancel_add_provider(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     """Отмена создания поставщика услуг."""
+    print(f"DEBUG: cancel_add_provider вызвана, callback.data = {callback.data}")
+    
     await callback.message.edit_text(
         "❌ <b>Создание поставщика услуг отменено</b>",
-        parse_mode="HTML",
+        parse_mode="HTML"
+    )
+    
+    # Отправляем отдельное сообщение с Reply клавиатурой
+    await callback.message.answer(
+        "🏠 Возвращайтесь в главное меню:",
         reply_markup=MAIN_KB
     )
+    
     await state.clear()
     await callback.answer("Отменено")
