@@ -525,7 +525,7 @@ async def my_profile_cmd(message: Message, session: AsyncSession):
         text,
         parse_mode="HTML",
         reply_markup=get_keyboard(
-            "Удалить профиль ❌",
+        #    "Удалить профиль ❌",
             "Главное меню 🏠",
             placeholder="User Profile Menu",
             sizes=(1, 1),

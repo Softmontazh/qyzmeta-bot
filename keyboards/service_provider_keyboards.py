@@ -23,14 +23,6 @@ def get_category_keyboard() -> InlineKeyboardMarkup:
             )
         ])
     
-    # Добавляем кнопку "Назад"
-    buttons.append([
-        InlineKeyboardButton(
-            text="🔙 Назад",
-            callback_data="back_to_jk_selection"
-        )
-    ])
-    
     return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 
@@ -106,6 +98,38 @@ def get_jk_selection_keyboard(jks: List) -> InlineKeyboardMarkup:
             InlineKeyboardButton(
                 text=button_text,
                 callback_data=f"select_jk:{jk.id}"
+            )
+        ])
+    
+    # Кнопка "Главное меню"
+    buttons.append([
+        InlineKeyboardButton(
+            text="🏠 Главное меню",
+            callback_data="to_main_menu"
+        )
+    ])
+    
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
+
+
+def get_simple_jk_selection_keyboard(jks: List) -> InlineKeyboardMarkup:
+    """
+    Создает упрощенную клавиатуру для выбора ЖК (только для добавления поставщика).
+    
+    Args:
+        jks: Список жилых комплексов
+    
+    Returns:
+        InlineKeyboardMarkup: Клавиатура с ЖК
+    """
+    buttons = []
+    
+    for jk in jks:
+        button_text = f"🏢 {jk.name} ({jk.city})"
+        buttons.append([
+            InlineKeyboardButton(
+                text=button_text,
+                callback_data=f"select_jk_for_add:{jk.id}"
             )
         ])
     

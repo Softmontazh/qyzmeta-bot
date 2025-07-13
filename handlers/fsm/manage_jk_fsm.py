@@ -19,6 +19,8 @@ from database.enums.user_enums import UserRole
 from database.models.orm_user import orm_get_user_by_id
 from keyboards.reply import MAIN_KB, get_keyboard
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from database.models.orm_jk_service_provider import orm_get_service_providers_by_jk
+from database.enums.offer_category_enum import OfferCategory
 
 manage_jk_router = Router()
 
@@ -279,34 +281,60 @@ async def back_to_add_jk_menu(callback: CallbackQuery, state: FSMContext):
     await callback.answer()
 
 
-# Обработка кнопки "Услуги" - переход к управлению поставщиками услуг
+# Обработка кнопки "Услуги" - показ сервисных компаний для ЖК
 @manage_jk_router.callback_query(F.data.startswith("manage_services_jk_"))
-async def handle_manage_services_jk(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
-    """Перейти к управлению поставщиками услуг для конкретного ЖК."""
+async def show_jk_services(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
+    """Показать список сервисных компаний для конкретного ЖК."""
     jk_id = int(callback.data.split("_")[-1])
     
-    # Проверяем права доступа
-    from handlers.fsm.manage_service_providers_fsm import check_service_management_access
-    user_id = callback.from_user.id
-    has_access, access_level = await check_service_management_access(user_id, session, jk_id)
-    
-    if not has_access:
-        await callback.answer("❌ Нет прав для управления услугами этого ЖК", show_alert=True)
+    # Получаем информацию о ЖК
+    jk = await orm_get_jk_by_id(session, jk_id)
+    if not jk:
+        await callback.answer("❌ ЖК не найден", show_alert=True)
         return
     
-    # Импортируем и вызываем функцию для конкретного ЖК
-    from handlers.fsm.manage_service_providers_fsm import handle_jk_selection, ManageServiceProviderStates
+    # Получаем список поставщиков услуг для данного ЖК
+    providers = await orm_get_service_providers_by_jk(session, jk_id, active_only=True)
     
-    # Устанавливаем состояние и данные
-    await state.update_data(
-        access_level=access_level,
-        available_jks=[jk_id],
-        selected_jk_id=jk_id
-    )
-    await state.set_state(ManageServiceProviderStates.select_jk)
+    if not providers:
+        # Если поставщиков нет
+        text = f"🔧 <b>СЕРВИСНЫЕ КОМПАНИИ</b>\n\n"
+        text += f"🏢 <b>ЖК:</b> {jk.name}\n\n"
+        text += "❌ Для данного ЖК не настроены сервисные компании"
+        
+        # Кнопка возврата
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"manage_jk_{jk_id}")]
+        ])
+    else:
+        # Формируем текст со списком поставщиков
+        text = f"🔧 <b>СЕРВИСНЫЕ КОМПАНИИ</b>\n\n"
+        text += f"🏢 <b>ЖК:</b> {jk.name}\n\n"
+        
+        for provider in providers:
+            # Безопасная обработка категории (provider.category уже объект OfferCategory)
+            category = provider.category
+            
+            text += f"{category.emoji} <b>{category.display_name}:</b> {provider.organization_name or 'Не указано'}\n"
+            
+            # Обработка телефона (может быть None)
+            phone = provider.contact_phone if provider.contact_phone else "не указан"
+            text += f"📞 <b>Телефон:</b> {phone}\n"
+            
+            text += f"👤 <b>Ответственный:</b> {provider.responsible_user_id}\n\n"
+        
+        text += f"📊 <b>Всего компаний:</b> {len(providers)}"
+        
+        # Кнопка возврата
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(text="⬅️ Назад", callback_data=f"manage_jk_{jk_id}")]
+        ])
     
-    # Имитируем callback для выбора ЖК
-    fake_callback_data = f"select_jk:{jk_id}"
-    callback.data = fake_callback_data
+    # Отправляем сообщение
+    try:
+        await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+    except:
+        # Если не удалось отредактировать, отправляем новое сообщение
+        await callback.message.answer(text, reply_markup=keyboard, parse_mode="HTML")
     
-    await handle_jk_selection(callback, state, session)
+    await callback.answer()

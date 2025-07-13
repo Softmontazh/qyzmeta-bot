@@ -14,8 +14,8 @@ from aiogram.fsm.context import FSMContext
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database.models.orm_jk import orm_add_jk, orm_update_jk, orm_get_jk_by_id
-from keyboards.reply import MAIN_KB, get_keyboard
+from database.models.orm_jk import orm_add_jk, orm_update_jk, orm_get_jk_by_id, orm_get_all_jks
+from keyboards.reply import MAIN_KB, get_keyboard, CONTROL_SERVICE_PROVIDER_KB
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from services.bus_service import bus_service
 
@@ -31,6 +31,7 @@ CONFIRM_JK = InlineKeyboardMarkup(
 ADD_JK_MAIN = get_keyboard(
     "Добавить ЖК",
     "Список ЖК 📋",
+    "Меню управления 🔧",
     "Главное меню 🏠",
     placeholder="Меню управления ЖК",
     sizes=(2, 1),
@@ -78,6 +79,21 @@ async def create_jk_menu(message: Message, state: FSMContext):
 
 
 @add_jk_router.message(
+    F.text == "Меню управления 🔧",
+    StateFilter(JKCreationState.menu),
+)
+async def back_to_service_management(message: Message, state: FSMContext):
+    """Возврат в главное меню управления поставщиками услуг"""
+    await state.clear()
+    await message.answer(
+        "🔧 <b>Управление поставщиками услуг</b>\n\n"
+        "Выберите действие:",
+        parse_mode="HTML",
+        reply_markup=CONTROL_SERVICE_PROVIDER_KB
+    )
+
+
+@add_jk_router.message(
     F.text.lower() == "добавить жк",
     StateFilter(JKCreationState.menu),
 )
@@ -97,11 +113,80 @@ async def start_create_jk(message: Message, state: FSMContext):
 )
 async def show_jk_list_from_menu(message: Message, state: FSMContext, session: AsyncSession):
     """Показать список ЖК из меню создания"""
-    await state.clear()
+    # НЕ очищаем состояние и НЕ вызываем внешнюю функцию
+    # Показываем список ЖК прямо здесь, сохраняя состояние JKCreationState.menu
     
-    # Используем внутреннюю функцию, которая не проверяет права повторно
-    from handlers.fsm.manage_jk_fsm import show_jk_list_internal
-    await show_jk_list_internal(message, state, session)
+    jks = await orm_get_all_jks(session)
+    
+    if not jks:
+        await message.answer(
+            "📋 <b>Список ЖК пуст</b>\n\n"
+            "❌ ЖК не найдены",
+            parse_mode="HTML",
+            reply_markup=ADD_JK_MAIN
+        )
+        return
+    
+    # Формируем список ЖК
+    jk_text = "📋 <b>СПИСОК ЖК</b>\n\n"
+    
+    for i, jk in enumerate(jks, 1):
+        jk_text += f"{i}. <b>{jk.name}</b>\n"
+        if jk.city and jk.street and jk.house:
+            jk_text += f"   📍 {jk.city}, {jk.street}, {jk.house}\n"
+        if jk.block:
+            jk_text += f"   🏗️ Блок: {jk.block}\n"
+        jk_text += f"   🆔 ID: {jk.id}\n\n"
+    
+    jk_text += f"📊 <b>Всего ЖК:</b> {len(jks)}"
+    
+    # Создаем инлайн клавиатуру с кнопками ЖК для редактирования
+    keyboard = []
+    for jk in jks:
+        keyboard.append([
+            InlineKeyboardButton(
+                text=f"✏️ {jk.name}",
+                callback_data=f"edit_jk_{jk.id}"
+            )
+        ])
+    
+    # Добавляем кнопку "Назад" которая вернет в меню ADD_JK_MAIN
+    keyboard.append([
+        InlineKeyboardButton(
+            text="⬅️ Назад",
+            callback_data="back_to_add_jk_menu"
+        )
+    ])
+    
+    reply_markup = InlineKeyboardMarkup(inline_keyboard=keyboard)
+    
+    await message.answer(
+        jk_text,
+        parse_mode="HTML",
+        reply_markup=reply_markup
+    )
+    
+    # ВАЖНО: Сохраняем состояние JKCreationState.menu!
+    # НЕ устанавливаем другое состояние!
+
+
+@add_jk_router.callback_query(F.data == "back_to_add_jk_menu")
+async def back_to_add_jk_menu(callback: CallbackQuery, state: FSMContext):
+    """Возврат в меню управления ЖК"""
+    await state.set_state(JKCreationState.menu)
+    
+    # Удаляем старое сообщение
+    try:
+        await callback.message.delete()
+    except:
+        pass
+    
+    # Отправляем новое сообщение с Reply клавиатурой
+    await callback.message.answer(
+        "🏢 Выберите действие:",
+        reply_markup=ADD_JK_MAIN
+    )
+    await callback.answer()
 
 
 # Обработчик ввода названия ЖК

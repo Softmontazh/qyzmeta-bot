@@ -39,15 +39,15 @@ async def check_service_management_access(user_id: int, session: AsyncSession, j
         return False, "❌ Пользователь не найден"
     
     # Проверяем роль пользователя
-    if user.role not in [UserRole.ADMIN, UserRole.ADMIN_JK, UserRole.CREATOR]:
+    if user.role not in [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CREATOR]:
         return False, "❌ У вас недостаточно прав для управления поставщиками услуг"
     
     # Если пользователь - суперадмин или создатель, доступ ко всему
-    if user.role in [UserRole.ADMIN, UserRole.CREATOR]:
+    if user.role in [UserRole.ADMIN, UserRole.SUPERADMIN, UserRole.CREATOR]:
         return True, ""
     
-    # Если администратор ЖК, проверяем доступ к конкретному ЖК
-    if user.role == UserRole.ADMIN_JK:
+    # Проверяем доступ через связку user_jk для обычных администраторов
+    if user.role == UserRole.ADMIN:
         if jk_id is None:
             # Если ЖК не указан, получаем список доступных ЖК
             jks = await orm_get_jks_by_user_admin(session, user_id)

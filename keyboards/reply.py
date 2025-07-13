@@ -45,3 +45,13 @@ MAIN_KB = get_keyboard(
     placeholder="Основное меню",
     sizes=(1, 2, 1),
 )
+
+
+CONTROL_SERVICE_PROVIDER_KB = get_keyboard(
+    "Список поставщиков услуг",
+    "Добавить поставщика услуг",
+    "Управление ЖК",
+    "Главное меню",
+    placeholder="Управление поставщиками услуг",
+    sizes=(1, 1, 1, 1, 1),
+)
