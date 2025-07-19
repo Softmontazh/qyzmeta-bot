@@ -7,6 +7,7 @@ from sqlalchemy.orm import selectinload
 from database.models.model_offer import Offer
 from database.models.model_user_jk import UserJK
 from database.models.model_jk import JK
+from database.models.model_user import User
 from database.models.model_jk_service_provider import JKServiceProvider
 from database.enums.offer_enums import OfferStatus
 from typing import Optional, List, Dict, Any
@@ -198,14 +199,14 @@ async def orm_get_offer_with_user_info(session: AsyncSession, offer_id: int) -> 
     )
     offer = result.scalar_one_or_none()
     
-    if offer and offer.user_jk:
-        # Загружаем информацию о пользователе отдельно
+    if offer and offer.user_id:
+        # Загружаем информацию о пользователе отдельно по user_id из заявки
         user_result = await session.execute(
-            select(User).where(User.user_id == offer.user_jk.user_id)
+            select(User).where(User.user_id == offer.user_id)
         )
         user = user_result.scalar_one_or_none()
         # Добавляем пользователя как атрибут для удобства
-        offer.user_jk.user = user
+        offer.user = user
     
     return offer
 
@@ -297,3 +298,94 @@ async def orm_get_service_provider_statistics(session: AsyncSession, user_id: in
         "avg_response_time_hours": avg_response_hours,
         "jk_list": jk_names
     }
+
+
+async def orm_get_offers_by_status_for_provider(
+    session: AsyncSession, 
+    user_id: int, 
+    status: str, 
+    page: int = 0, 
+    limit: int = 10
+) -> List[Offer]:
+    """
+    Получает заявки по статусу для конкретного поставщика услуг с пагинацией.
+    
+    Args:
+        session: Сессия базы данных
+        user_id: ID пользователя-поставщика услуг
+        status: Статус заявок (ACTIVE, IN_PROGRESS, COMPLETED, CANCELLED)
+        page: Номер страницы (начиная с 0)
+        limit: Количество заявок на странице
+        
+    Returns:
+        List[Offer]: Список заявок с загруженными связанными данными
+    """
+    try:
+        # Сначала получаем все ЖК и категории, которые обслуживает данный поставщик
+        provider_query = select(JKServiceProvider).where(
+            JKServiceProvider.responsible_user_id == user_id
+        )
+        provider_result = await session.execute(provider_query)
+        providers = provider_result.scalars().all()
+        
+        if not providers:
+            return []
+        
+        # Получаем списки ЖК и категорий
+        jk_ids = [p.jk_id for p in providers]
+        categories = [p.category.value for p in providers]
+        
+        # Преобразуем строку статуса в enum
+        if isinstance(status, str):
+            # Сначала попробуем найти по значению (если передали "active", "in_progress", etc.)
+            status_enum = None
+            for offer_status in OfferStatus:
+                if offer_status.value == status.lower():
+                    status_enum = offer_status
+                    break
+            
+            # Если не нашли, попробуем найти по имени enum (если передали "ACTIVE", "IN_PROGRESS", etc.)
+            if status_enum is None:
+                try:
+                    status_enum = OfferStatus[status.upper()]
+                except KeyError:
+                    print(f"Unknown status: {status}")
+                    return []
+        else:
+            status_enum = status
+        
+        # Формируем запрос для поиска заявок
+        query = (
+            select(Offer)
+            .options(
+                selectinload(Offer.user_jk).selectinload(UserJK.jk),
+                selectinload(Offer.user_jk)
+            )
+            .join(UserJK, Offer.user_jk_id == UserJK.id)
+            .where(
+                and_(
+                    UserJK.jk_id.in_(jk_ids),  # ЖК, которые обслуживает поставщик
+                    Offer.category.in_(categories),  # Категории, которые обслуживает поставщик
+                    Offer.status == status_enum  # Нужный статус
+                )
+            )
+            .order_by(desc(Offer.created_at))
+            .offset(page * limit)
+            .limit(limit)
+        )
+        
+        result = await session.execute(query)
+        offers = result.scalars().all()
+        
+        # Загружаем пользователей отдельно для каждой заявки
+        for offer in offers:
+            if offer.user_id:
+                user_query = select(User).where(User.user_id == offer.user_id)
+                user_result = await session.execute(user_query)
+                offer.user = user_result.scalar_one_or_none()
+        
+        return offers
+        
+    except Exception as e:
+        print(f"Error in orm_get_offers_by_status_for_provider: {e}")
+        return []
