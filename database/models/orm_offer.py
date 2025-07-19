@@ -20,6 +20,7 @@ async def orm_add_offer(session: AsyncSession, data: dict) -> Offer:
         "title": data.get("title"),
         "description": data.get("description"),
         "media_id": data.get("media_id"),
+        "bus_media_id": data.get("bus_media_id"),
         "user_id": data.get("user_id"),
         "user_jk_id": data.get("user_jk_id"),
         "status": data.get("status", OfferStatus.ACTIVE),  # Устанавливаем ACTIVE по умолчанию

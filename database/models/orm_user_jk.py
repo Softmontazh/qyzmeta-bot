@@ -44,6 +44,14 @@ async def orm_get_user_jk(
     return result.scalar_one_or_none()
 
 
+async def orm_get_user_jk_by_id(session: AsyncSession, user_jk_id: int) -> UserJK | None:
+    """Получение UserJK по ID"""
+    result = await session.execute(
+        select(UserJK).where(UserJK.id == user_jk_id)
+    )
+    return result.scalar_one_or_none()
+
+
 async def orm_delete_user_jk(session: AsyncSession, user_id: int, jk_id: int) -> bool:
     """Удаление привязки пользователя ЖК по user_id"""
     stmt = delete(UserJK).where(UserJK.user_id == user_id, UserJK.jk_id == jk_id)

@@ -10,6 +10,7 @@ from database.models.orm_jk_service_provider import orm_get_service_provider_by_
 from database.models.orm_jk import orm_get_jk_by_id
 from database.enums.offer_category_enum import OfferCategory
 from database.enums.offer_enums import OfferStatus
+from services.bus_service import bus_service
 
 
 async def notify_service_provider(session: AsyncSession, bot, offer, jk_data, user_jk_data, user_data, category: str):
@@ -98,8 +99,8 @@ async def send_notification_to_provider(bot, service_provider, offer, jk_data, u
         f"📞 <b>Контакт организации:</b> {service_provider.contact_phone or 'не указан'}"
     )
     
-    # Создаем клавиатуру с кнопками действий
-    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+    # Создаем клавиатуру с кнопками действий (без кнопки "Подробнее")
+    keyboard_buttons = [
         [
             InlineKeyboardButton(
                 text="⏳ Принять в работу", 
@@ -120,22 +121,56 @@ async def send_notification_to_provider(bot, service_provider, offer, jk_data, u
             InlineKeyboardButton(
                 text="📞 Связаться", 
                 url=f"tg://user?id={user_data.user_id}"
-            ),
-            InlineKeyboardButton(
-                text="📋 Управление", 
-                callback_data=f"manage_offer:{offer.id}"
             )
         ]
-    ])
+    ]
+
+    keyboard = InlineKeyboardMarkup(inline_keyboard=keyboard_buttons)
 
     try:
-        await bot.send_message(
-            chat_id=service_provider.responsible_user_id,
-            text=notification_text,
-            parse_mode="HTML",
-            reply_markup=keyboard
-        )
-        print(f"✅ Уведомление отправлено поставщику {service_provider.responsible_user_id} ({service_provider.organization_name})")
+        # Отправляем уведомление с медиа или без
+        if offer.bus_media_id:
+            # Пробуем отправить как фото с полным текстом
+            try:
+                await bot.send_photo(
+                    chat_id=service_provider.responsible_user_id,
+                    photo=offer.bus_media_id,
+                    caption=notification_text,
+                    parse_mode="HTML",
+                    reply_markup=keyboard
+                )
+                print(f"✅ Уведомление с фото отправлено поставщику {service_provider.responsible_user_id} ({service_provider.organization_name})")
+            except Exception as photo_error:
+                try:
+                    # Если не фото, пробуем как видео
+                    await bot.send_video(
+                        chat_id=service_provider.responsible_user_id,
+                        video=offer.bus_media_id,
+                        caption=notification_text,
+                        parse_mode="HTML",
+                        reply_markup=keyboard
+                    )
+                    print(f"✅ Уведомление с видео отправлено поставщику {service_provider.responsible_user_id} ({service_provider.organization_name})")
+                except Exception as video_error:
+                    print(f"⚠️ Ошибка отправки медиа (фото: {photo_error}, видео: {video_error}), отправляем текст")
+                    # Если медиа не удается отправить, отправляем только текст
+                    notification_text += f"\n\n⚠️ <b>Медиафайл временно недоступен</b>"
+                    await bot.send_message(
+                        chat_id=service_provider.responsible_user_id,
+                        text=notification_text,
+                        parse_mode="HTML",
+                        reply_markup=keyboard
+                    )
+                    print(f"✅ Уведомление (текст) отправлено поставщику {service_provider.responsible_user_id} ({service_provider.organization_name})")
+        else:
+            # Отправляем только текст, если нет медиа
+            await bot.send_message(
+                chat_id=service_provider.responsible_user_id,
+                text=notification_text,
+                parse_mode="HTML",
+                reply_markup=keyboard
+            )
+            print(f"✅ Уведомление отправлено поставщику {service_provider.responsible_user_id} ({service_provider.organization_name})")
         
     except Exception as e:
         print(f"❌ Ошибка отправки уведомления поставщику {service_provider.responsible_user_id}: {e}")

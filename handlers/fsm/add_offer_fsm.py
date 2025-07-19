@@ -18,6 +18,7 @@ from database.models.orm_user_jk import orm_get_jks_by_user_id
 from database.models.orm_offer import orm_add_offer
 from database.enums.offer_category_enum import OfferCategory
 from services.notification_service import notify_service_provider
+from services.bus_service import bus_service
 
 add_offer_router = Router()
 
@@ -248,18 +249,45 @@ async def set_description(message: Message, state: FSMContext):
 
 @add_offer_router.message(AddOffer.set_media, F.photo | F.video)
 async def set_media(message: Message, state: FSMContext):
-    """Обработка загрузки медиа."""
+    """Обработка загрузки медиа с использованием BUS системы."""
+    media_id = None
+    bus_media_id = None
+    media_type = None
+    
     if message.photo:
         media_id = message.photo[-1].file_id
         media_type = "фото"
+        # Сохраняем фото в BUS для обмена между ботами
+        try:
+            bus_media_id = await bus_service.save_image(media_id)
+            if bus_media_id is None:
+                bus_media_id = media_id  # Fallback к оригинальному ID
+        except Exception as e:
+            print(f"Error saving image to BUS: {e}")
+            bus_media_id = media_id  # Fallback к оригинальному ID
+            
     elif message.video:
         media_id = message.video.file_id
         media_type = "видео"
+        # Сохраняем видео в BUS для обмена между ботами
+        try:
+            bus_media_id = await bus_service.save_video(media_id)
+            if bus_media_id is None:
+                bus_media_id = media_id  # Fallback к оригинальному ID
+        except Exception as e:
+            print(f"Error saving video to BUS: {e}")
+            bus_media_id = media_id  # Fallback к оригинальному ID
     else:
         await message.answer("❌ Поддерживаются только фото и видео.")
         return
 
-    await state.update_data(media_id=media_id)
+    await state.update_data(
+        media_id=media_id,
+        bus_media_id=bus_media_id,
+        media_type=media_type
+    )
+    
+    await message.answer(f"✅ {media_type.capitalize()} загружено и доступно для сервисников!")
     await show_confirmation(message, state)
 
 
@@ -323,55 +351,66 @@ async def confirm_offer(
     callback: CallbackQuery, state: FSMContext, session: AsyncSession
 ):
     """Подтверждение и сохранение заявки."""
-    data = await state.get_data()
-    user_id = callback.from_user.id
+    try:
+        data = await state.get_data()
+        user_id = callback.from_user.id
 
-    user_jk_id = data.get("user_jk_id")
-    if not user_jk_id:
-        await callback.message.edit_text("❌ Ошибка: не выбран ЖК.")
-        await callback.answer()
-        return
+        user_jk_id = data.get("user_jk_id")
+        if not user_jk_id:
+            await callback.message.edit_text("❌ Ошибка: не выбран ЖК.")
+            await callback.answer()
+            return
 
-    # Создаем заявку через ORM
-    offer_data = {
-        "category": data["category"],
-        "title": data["title"],
-        "description": data["description"],
-        "media_id": data.get("media_id"),
-        "user_id": user_id,
-        "user_jk_id": user_jk_id,
-    }
-    
-    offer = await orm_add_offer(session, offer_data)
-    await session.commit()
+        # Создаем заявку через ORM
+        offer_data = {
+            "category": data["category"],
+            "title": data["title"],
+            "description": data["description"],
+            "media_id": data.get("media_id"),
+            "bus_media_id": data.get("bus_media_id"),
+            "user_id": user_id,
+            "user_jk_id": user_jk_id,
+        }
+        
+        offer = await orm_add_offer(session, offer_data)
+        await session.commit()
 
-    await callback.message.edit_text(
-        f"✅ <b>Заявка успешно создана!</b>\n\n"
-        f"<b>Номер заявки:</b> #{offer.id}\n"
-        f"<b>Категория:</b> {data['category_name']}\n"
-        f"<b>Название:</b> {data['title']}\n\n"
-        f"Ваша заявка будет рассмотрена в ближайшее время.",
-        parse_mode="HTML",
-    )
+        await callback.message.edit_text(
+            f"✅ <b>Заявка успешно создана!</b>\n\n"
+            f"<b>Номер заявки:</b> #{offer.id}\n"
+            f"<b>Категория:</b> {data['category_name']}\n"
+            f"<b>Название:</b> {data['title']}\n\n"
+            f"Ваша заявка будет рассмотрена в ближайшее время.",
+            parse_mode="HTML",
+        )
 
-    # Уведомляем поставщика услуг о новой заявке
-    # Получаем данные пользователя для уведомления
-    from database.models.orm_user import orm_get_user_by_id
-    user_data = await orm_get_user_by_id(session, user_id)
-    
-    # Вызываем с полными данными из state
-    await notify_service_provider(
-        session, 
-        callback.bot, 
-        offer, 
-        data['jk_data'],      # Данные ЖК из state
-        data['user_jk_data'], # Данные UserJK из state
-        user_data,            # Данные User
-        data["category"]
-    )
+        # Уведомляем поставщика услуг о новой заявке
+        from database.models.orm_user import orm_get_user_by_id
+        user_data = await orm_get_user_by_id(session, user_id)
+        
+        # Вызываем с полными данными из state
+        await notify_service_provider(
+            session, 
+            callback.bot, 
+            offer, 
+            data['jk_data'],      # Данные ЖК из state
+            data['user_jk_data'], # Данные UserJK из state
+            user_data,            # Данные User
+            data["category"]
+        )
 
-    await state.clear()
-    await callback.answer("Заявка создана!")
+        await state.clear()
+        await callback.answer("Заявка создана!")
+        
+    except Exception as e:
+        print(f"ERROR in confirm_offer: {e}")
+        import traceback
+        traceback.print_exc()
+        
+        await callback.message.edit_text(
+            "❌ Произошла ошибка при создании заявки. Попробуйте позже."
+        )
+        await callback.answer("Ошибка создания заявки")
 
 
 @add_offer_router.callback_query(F.data == "cancel_offer")

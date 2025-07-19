@@ -32,8 +32,11 @@ class Offer(Base):
     # Описание заявки
     description: Mapped[str] = mapped_column(Text, nullable=True)
 
-    # ID фото или видео в Telegram
+    # ID фото или видео в Telegram (оригинальный file_id)
     media_id: Mapped[str] = mapped_column(String(200), nullable=True)
+    
+    # BUS media ID для обмена медиафайлами между ботами (file_id из BUS группы)
+    bus_media_id: Mapped[str] = mapped_column(String(200), nullable=True, index=True)
 
     # ID пользователя, создавшего заявку
     user_id: Mapped[int] = mapped_column(BigInteger, nullable=False)
