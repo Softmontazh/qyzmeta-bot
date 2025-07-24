@@ -597,7 +597,8 @@ async def cancel_delete_profile(callback: CallbackQuery, session: AsyncSession):
 # === СИСТЕМА РОЛЕЙ ===
 
 import os
-from keyboards.platform_role_keyboards import get_creator_moderation_keyboard
+from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 
 def is_creator_by_environment(user_id: int) -> bool:
@@ -629,5 +630,19 @@ async def creator_panel_command(message: Message):
         "• /is_moderator — Проверка роли модератора\n\n"
         "📋 <b>Управление заявками:</b>",
         parse_mode="HTML",
-        reply_markup=get_creator_moderation_keyboard()
+        reply_markup=_get_creator_moderation_keyboard()
     )
+
+
+def _get_creator_moderation_keyboard() -> InlineKeyboardMarkup:
+    """Панель создателя с кнопкой модерации заявок"""
+    builder = InlineKeyboardBuilder()
+    
+    builder.row(
+        InlineKeyboardButton(text="📋 Заявки на партнерство", callback_data="view_applications")
+    )
+    builder.row(
+        InlineKeyboardButton(text="👑 Панель создателя", callback_data="creator_panel")
+    )
+    
+    return builder.as_markup()
