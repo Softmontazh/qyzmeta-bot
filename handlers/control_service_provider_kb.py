@@ -7,6 +7,7 @@
 from aiogram.types import Message
 from aiogram import F, Router
 from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import default_state
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.models.orm_jk import orm_get_all_jks, orm_get_jk_by_id
@@ -141,7 +142,7 @@ async def add_service_provider(message: Message, state: FSMContext, session: Asy
         )
 
 
-@control_service_provider_router.message(F.text == "Управление ЖК")
+@control_service_provider_router.message(F.text == "Управление ЖК", default_state)
 async def control_jk(message: Message, state: FSMContext, session: AsyncSession):
     """Управление ЖК - переход к меню /add_jk."""
     await state.clear()

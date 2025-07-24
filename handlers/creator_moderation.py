@@ -94,7 +94,7 @@ async def view_application_details(callback: CallbackQuery, session: AsyncSessio
         f"📞 <b>Телефон:</b> {application.phone}\n"
         f"📅 <b>Дата подачи:</b> {application.created_at.strftime('%d.%m.%Y %H:%M')}\n\n"
         f"📝 <b>Цель получения роли:</b>\n{application.purpose}\n\n"
-        f"⏳ <b>Статус:</b> {application.status}"
+        f"⏳ <b>Статус:</b> {application.status.get_russian_name()}"
     )
     
     keyboard = get_application_actions_keyboard(app_id)

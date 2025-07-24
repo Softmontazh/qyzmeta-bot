@@ -9,6 +9,7 @@ from aiogram.types import (
     InlineKeyboardMarkup,
     InlineKeyboardButton,
 )
+from aiogram.utils.keyboard import InlineKeyboardBuilder
 from aiogram.enums import ParseMode
 from aiogram.filters import CommandStart, Command, StateFilter, or_f
 from aiogram.fsm.context import FSMContext
@@ -34,6 +35,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.models.model_user import User
 from database.enums.lot_enums import LotStatus
 from keyboards.inline_for_jk import get_btns_control_jk, unlink_keyboard
+from keyboards.platform_role_keyboards import get_creator_moderation_keyboard
 from database.models.orm_user_jk import orm_get_jks_by_user_id
 from database.models.model_user_jk import UserJK
 from static.privacy_policy import privacy_policy_text as policy_text
@@ -630,19 +632,5 @@ async def creator_panel_command(message: Message):
         "• /is_moderator — Проверка роли модератора\n\n"
         "📋 <b>Управление заявками:</b>",
         parse_mode="HTML",
-        reply_markup=_get_creator_moderation_keyboard()
+        reply_markup=get_creator_moderation_keyboard()
     )
-
-
-def _get_creator_moderation_keyboard() -> InlineKeyboardMarkup:
-    """Панель создателя с кнопкой модерации заявок"""
-    builder = InlineKeyboardBuilder()
-    
-    builder.row(
-        InlineKeyboardButton(text="📋 Заявки на партнерство", callback_data="view_applications")
-    )
-    builder.row(
-        InlineKeyboardButton(text="👑 Панель создателя", callback_data="creator_panel")
-    )
-    
-    return builder.as_markup()

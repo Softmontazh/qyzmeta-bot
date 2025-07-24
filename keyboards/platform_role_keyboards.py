@@ -81,10 +81,21 @@ def get_role_request_keyboard(role: str) -> InlineKeyboardMarkup:
     """Клавиатура для запроса роли"""
     builder = InlineKeyboardBuilder()
     
+    # Преобразуем роль в верхний регистр для соответствия UserRole
+    role_mapping = {
+        "partner": "PARTNER",
+        "admin": "ADMIN", 
+        "moderator": "MODERATOR",
+        "manager": "MANAGER",
+        "support": "SUPPORT"
+    }
+    
+    role_upper = role_mapping.get(role.lower(), role.upper())
+    
     builder.row(
         InlineKeyboardButton(
             text="📝 Подать заявку", 
-            callback_data=f"apply_for_{role}"
+            callback_data=f"apply_for_role:{role_upper}"
         )
     )
     builder.row(

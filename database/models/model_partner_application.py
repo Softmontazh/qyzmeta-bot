@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import BigInteger, String, Text, DateTime, Enum as SqlEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from database.models.model_base import Base
-from database.enums.user_enums import UserRole
+from database.enums.user_enums import UserRole, ApplicationStatus
 
 
 class PartnerApplication(Base):
@@ -19,8 +19,9 @@ class PartnerApplication(Base):
     company: Mapped[str] = mapped_column(String(255), nullable=False)
     purpose: Mapped[str] = mapped_column(Text, nullable=False)
     phone: Mapped[str] = mapped_column(String(20), nullable=False)
-    status: Mapped[str] = mapped_column(String(20), default="pending", nullable=False)
+    status: Mapped[ApplicationStatus] = mapped_column(SqlEnum(ApplicationStatus), default=ApplicationStatus.PENDING, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     def __repr__(self):
         return f"<PartnerApplication(id={self.id}, user_id={self.user_id}, role={self.requested_role}, status={self.status})>"

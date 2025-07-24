@@ -50,6 +50,12 @@ async def orm_get_user_by_id(session: AsyncSession, user_id: int):
     )  # Возвращает пользователя или None, если не найден
 
 
+# Алиас для совместимости с системой ролей
+async def orm_get_user_by_telegram_id(session: AsyncSession, telegram_id: int):
+    """Получение пользователя по Telegram ID (алиас для orm_get_user_by_id)."""
+    return await orm_get_user_by_id(session, telegram_id)
+
+
 async def orm_update_user_role(session: AsyncSession, user_id: int, new_role):
     """Обновление роли пользователя."""
     from database.enums.user_enums import UserRole

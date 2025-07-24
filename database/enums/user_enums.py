@@ -11,6 +11,21 @@ class UserLanguage(str, Enum):
     KZ = "kz"
 
 
+class ApplicationStatus(str, Enum):
+    PENDING = "PENDING"
+    APPROVED = "APPROVED"
+    REJECTED = "REJECTED"
+    
+    def get_russian_name(self):
+        """Возвращает русское название статуса"""
+        status_names = {
+            "PENDING": "⏳ Ожидает рассмотрения",
+            "APPROVED": "✅ Одобрена",
+            "REJECTED": "❌ Отклонена"
+        }
+        return status_names.get(self.value, self.value)
+
+
 class UserRole(str, Enum):
     CREATOR = "CREATOR"
     OWNER = "OWNER"
