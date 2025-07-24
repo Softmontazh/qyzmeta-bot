@@ -1,7 +1,7 @@
 import uuid
-from sqlalchemy import BigInteger, Integer, String
+from sqlalchemy import BigInteger, Integer, String, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from database.models.model_base import Base
 
@@ -35,6 +35,9 @@ class JK(Base):
     bus_image_id: Mapped[str] = mapped_column(String(100), nullable=True)
 
     creator_id: Mapped[int] = mapped_column(BigInteger, nullable=True)
+
+    # Список админов ЖК для локальной системы ролей (хранится как JSON массив telegram_id)
+    admins_list: Mapped[Optional[list]] = mapped_column(JSON, nullable=True)
 
     # Связи
     user_jks: Mapped[list["UserJK"]] = relationship("UserJK", back_populates="jk")

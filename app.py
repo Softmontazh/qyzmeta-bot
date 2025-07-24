@@ -23,6 +23,13 @@ from handlers.service_providers_view import router as service_providers_view_rou
 from handlers.service_provider_panel import service_provider_panel_router
 from handlers.fsm.become_service_provider_fsm import become_service_provider_router
 from handlers.offer_media_handlers import offer_media_router
+
+# Импорт роутеров системы ролей
+from handlers.platform_roles.admin_role_handler import router as admin_role_router
+from handlers.platform_roles.partner_role_handler import router as partner_role_router
+from handlers.platform_roles.moderator_role_handler import router as moderator_role_router
+from handlers.fsm.role_application_fsm import router as role_application_router
+from handlers.creator_moderation import router as creator_moderation_router
 from services.bus_service import bus_service
 
 from common.bot_cmds_list import cmds_list
@@ -49,6 +56,14 @@ dp.include_router(manage_offer_status_router)  # для управления с�
 dp.include_router(service_provider_panel_router)  # для панели управления поставщиков услуг
 dp.include_router(offer_status_router)  # для управления статусами через кнопки
 dp.include_router(offer_media_router)  # для работы с медиафайлами заявок через BUS
+
+# Подключаем роутеры системы ролей
+dp.include_router(admin_role_router)  # команда /is_admin
+dp.include_router(partner_role_router)  # команда /is_partner  
+dp.include_router(moderator_role_router)  # команда /is_moderator
+dp.include_router(role_application_router)  # FSM подачи заявок на роли
+dp.include_router(creator_moderation_router)  # модерация заявок создателем
+
 dp.include_router(user_group_router)  # для групповых чатов
 dp.include_router(admin_router)  # для личных сообщений от администраторов
 

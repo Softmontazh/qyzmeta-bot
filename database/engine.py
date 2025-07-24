@@ -10,6 +10,7 @@ from database.models.model_offer import Offer
 from database.models.model_lot import Lot
 from database.models.model_lot_limit import LotLimit
 from database.models.model_jk_service_provider import JKServiceProvider
+from database.models.model_partner_application import PartnerApplication
 
 # from .env file:
 # DATABASE_URL=postgresql+asyncpg://login:password@localhost:5432/db_name

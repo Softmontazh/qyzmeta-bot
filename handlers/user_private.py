@@ -592,3 +592,42 @@ async def confirm_delete_profile(callback: CallbackQuery, session: AsyncSession)
 async def cancel_delete_profile(callback: CallbackQuery, session: AsyncSession):
     await callback.message.edit_text("Удаление профиля отменено.")
     await callback.answer()
+
+
+# === СИСТЕМА РОЛЕЙ ===
+
+import os
+from keyboards.platform_role_keyboards import get_creator_moderation_keyboard
+
+
+def is_creator_by_environment(user_id: int) -> bool:
+    """Проверяет, является ли пользователь создателем через переменную окружения"""
+    creator_ids = os.getenv("CREATOR_ID")
+    if not creator_ids:
+        return False
+    
+    creator_id_list = [id_str.strip() for id_str in creator_ids.split(",")]
+    return str(user_id) in creator_id_list
+
+
+@user_private_router.message(Command("creator_panel"))
+async def creator_panel_command(message: Message):
+    """Панель создателя со всеми доступными командами"""
+    if not is_creator_by_environment(message.from_user.id):
+        await message.answer("❌ У вас нет прав доступа к панели создателя.")
+        return
+    
+    await message.answer(
+        "👑 <b>Панель создателя</b>\n\n"
+        "🎛️ <b>Доступные команды:</b>\n"
+        "• /add_jk — Добавить новый ЖК\n"
+        "• /manage_services — Управление поставщиками услуг\n"
+        "• /admin — Панель администратора\n\n"
+        "🌐 <b>Система ролей:</b>\n"
+        "• /is_admin — Проверка роли администратора\n"
+        "• /is_partner — Проверка роли партнера\n"
+        "• /is_moderator — Проверка роли модератора\n\n"
+        "📋 <b>Управление заявками:</b>",
+        parse_mode="HTML",
+        reply_markup=get_creator_moderation_keyboard()
+    )
