@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 # handlers/user_private.py
 
+import os
+import asyncio
 from datetime import timedelta, timezone
 from aiogram import F, Router, Bot
 from aiogram.types import (
@@ -30,12 +32,10 @@ from database.models.orm_lot import (
 
 from database.enums.user_enums import UserRole
 from asyncio import sleep
-import asyncio
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.models.model_user import User
 from database.enums.lot_enums import LotStatus
 from keyboards.inline_for_jk import get_btns_control_jk, unlink_keyboard
-from keyboards.platform_role_keyboards import get_creator_moderation_keyboard
 from database.models.orm_user_jk import orm_get_jks_by_user_id
 from database.models.model_user_jk import UserJK
 from static.privacy_policy import privacy_policy_text as policy_text
@@ -44,7 +44,7 @@ from static.help import help_text
 from static.support import support_text
 
 from filters.chat_types import ChatTypeFilter
-from keyboards.reply import MAIN_KB, get_keyboard
+from keyboards.reply import MAIN_KB, CONTROL_SERVICE_PROVIDER_KB, get_keyboard
 from keyboards.inline_for_lot import get_btns_control_lots
 from utils.registration_check import check_user_registration
 
@@ -630,7 +630,35 @@ async def creator_panel_command(message: Message):
         "• /is_admin — Проверка роли администратора\n"
         "• /is_partner — Проверка роли партнера\n"
         "• /is_moderator — Проверка роли модератора\n\n"
-        "📋 <b>Управление заявками:</b>",
+        "📋 <b>Управление заявками:</b>\n"
+        "Используйте кнопку 'Заявки на партнерство' ниже",
         parse_mode="HTML",
-        reply_markup=get_creator_moderation_keyboard()
+        reply_markup=CONTROL_SERVICE_PROVIDER_KB
+    )
+
+
+@user_private_router.message(F.text == "Заявки на партнерство")
+async def handle_partnership_applications_text(message: Message, session: AsyncSession):
+    """Обработчик текстовой кнопки 'Заявки на партнерство'"""
+    if not is_creator_by_environment(message.from_user.id):
+        await message.answer("❌ У вас нет прав доступа к заявкам на партнерство.")
+        return
+    
+    # Импортируем функции из creator_moderation
+    from database.models.orm_partner_application import orm_get_pending_applications
+    from keyboards.platform_role_keyboards import get_applications_list_keyboard
+    
+    applications = await orm_get_pending_applications(session)
+    
+    if applications:
+        text = f"📋 <b>Заявки на роли</b>\n\nВсего заявок: {len(applications)}\n\nВыберите заявку для просмотра:"
+    else:
+        text = "📭 <b>Нет новых заявок</b>\n\nВсе заявки обработаны."
+    
+    keyboard = get_applications_list_keyboard(applications)
+    
+    await message.answer(
+        text,
+        parse_mode="HTML",
+        reply_markup=keyboard
     )

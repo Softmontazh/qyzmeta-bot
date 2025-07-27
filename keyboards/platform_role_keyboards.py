@@ -138,15 +138,12 @@ def get_applications_list_keyboard(applications: List["PartnerApplication"]) -> 
             )
         )
     
-    if not applications:
+    # Кнопки управления (только если есть заявки)
+    if applications:
         builder.row(
-            InlineKeyboardButton(text="📭 Нет заявок", callback_data="no_apps")
+            InlineKeyboardButton(text="🔄 Обновить", callback_data="view_applications"),
+            InlineKeyboardButton(text="❌ Закрыть", callback_data="close_applications")
         )
-    
-    builder.row(
-        InlineKeyboardButton(text="🔄 Обновить", callback_data="view_applications"),
-        InlineKeyboardButton(text="🔙 Назад", callback_data="creator_panel")
-    )
     
     return builder.as_markup()
 

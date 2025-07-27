@@ -122,9 +122,9 @@ async def approve_application(callback: CallbackQuery, session: AsyncSession):
         await callback.message.edit_text(
             "✅ <b>Заявка одобрена!</b>\n\n"
             f"Заявка #{app_id} успешно одобрена.\n"
-            "Пользователю назначена запрашиваемая роль.",
-            parse_mode="HTML",
-            reply_markup=get_creator_moderation_keyboard()
+            "Пользователю назначена запрашиваемая роль.\n\n"
+            "💡 Для просмотра других заявок используйте кнопку 'Заявки на партнерство' в главном меню.",
+            parse_mode="HTML"
         )
         await callback.answer("✅ Заявка одобрена")
     else:
@@ -146,19 +146,13 @@ async def reject_application(callback: CallbackQuery, session: AsyncSession):
         await callback.message.edit_text(
             "❌ <b>Заявка отклонена!</b>\n\n"
             f"Заявка #{app_id} отклонена.\n"
-            "Пользователь получит уведомление об отказе.",
-            parse_mode="HTML",
-            reply_markup=get_creator_moderation_keyboard()
+            "Пользователь получит уведомление об отказе.\n\n"
+            "💡 Для просмотра других заявок используйте кнопку 'Заявки на партнерство' в главном меню.",
+            parse_mode="HTML"
         )
         await callback.answer("❌ Заявка отклонена")
     else:
         await callback.answer("❌ Ошибка при отклонении заявки", show_alert=True)
-
-
-@router.callback_query(F.data == "no_apps")
-async def no_applications_handler(callback: CallbackQuery):
-    """Обработчик для пустого списка заявок"""
-    await callback.answer("📭 Нет заявок для обработки")
 
 
 @router.callback_query(F.data == "creator_panel")
@@ -170,9 +164,23 @@ async def creator_panel_handler(callback: CallbackQuery):
     
     await callback.message.edit_text(
         "👑 <b>Панель создателя</b>\n\n"
-        "Добро пожаловать в панель управления системой ролей.\n"
-        "Выберите необходимое действие:",
-        parse_mode="HTML",
-        reply_markup=get_creator_moderation_keyboard()
+        "Добро пожаловать в панель управления системой ролей.\n\n"
+        "💡 Используйте команду /creator_panel для доступа к полному функционалу.",
+        parse_mode="HTML"
+    )
+    await callback.answer()
+
+
+@router.callback_query(F.data == "close_applications")
+async def close_applications_handler(callback: CallbackQuery):
+    """Закрытие списка заявок"""
+    if not is_creator_by_environment(callback.from_user.id):
+        await callback.answer("❌ Недостаточно прав", show_alert=True)
+        return
+    
+    await callback.message.edit_text(
+        "📋 <b>Заявки закрыты</b>\n\n"
+        "💡 Для просмотра заявок используйте кнопку 'Заявки на партнерство' в главном меню или команду /creator_panel",
+        parse_mode="HTML"
     )
     await callback.answer()
