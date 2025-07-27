@@ -20,6 +20,9 @@ from database.models.model_user_jk import UserJK
 from database.models.model_jk import JK
 from database.models.orm_user_jk import orm_add_user_jk
 from database.models.orm_jk import orm_get_all_jks, orm_get_name_by_id
+from services.subscription_service import SubscriptionService
+from keyboards.subscription_keyboards import get_address_limit_exceeded_keyboard
+from database.enums.subscription_enums import SubscriptionTier
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 
 user_to_jk_router = Router()
@@ -89,14 +92,59 @@ async def is_hous_callback(
 
 @user_to_jk_router.message(UserToJK.set_appartment)
 async def set_appartment(message: Message, state: FSMContext, session: AsyncSession):
+    """Установить номер квартиры и зарегистрировать пользователя в ЖК"""
     data = await state.get_data()
     jk_id = data.get("jk_id")
     appartment = message.text.strip()
+    user_id = message.from_user.id
 
-    # Сохраняем в БД (например, через связь UserJK)
-    await orm_add_user_jk(
-        session, user_id=message.from_user.id, jk_id=jk_id, appartment=appartment
+    # 🚀 ПРОВЕРКА ЛИМИТА АДРЕСОВ
+    can_register, subscription_info = await SubscriptionService.check_can_register_address(
+        session, user_id
     )
+    
+    if not can_register:
+        # Превышен лимит адресов
+        await state.clear()
+        
+        current_tier = subscription_info.get("tier", SubscriptionTier.FREE)
+        
+        limit_message = f"🚫 <b>Лимит адресов исчерпан</b>\n\n"
+        limit_message += f"📊 <b>Ваш тариф:</b> {subscription_info['tier_name']}\n"
+        limit_message += f"🏠 <b>Адреса:</b> {subscription_info['current_addresses']}/{subscription_info['max_addresses']}\n\n"
+        limit_message += "💡 <b>Для регистрации по новому адресу необходимо обновить тариф</b>"
+        
+        # Клавиатура с предложением апгрейда
+        keyboard = get_address_limit_exceeded_keyboard(user_id, current_tier)
+        
+        await message.answer(
+            limit_message,
+            parse_mode="HTML",
+            reply_markup=keyboard
+        )
+        return
+
+    # Сохраняем в БД (если лимит позволяет)
+    await orm_add_user_jk(
+        session, user_id=user_id, jk_id=jk_id, appartment=appartment
+    )
+    
     name_jk = await orm_get_name_by_id(session, jk_id)
-    await message.answer(f"Вы добавлены в {name_jk}, квартира: {appartment}")
+    
+    # Получаем обновленную информацию о подписке
+    updated_subscription_info = await SubscriptionService.get_user_subscription_info(
+        session, user_id
+    )
+    
+    success_message = f"✅ <b>Успешно зарегистрированы!</b>\n\n"
+    success_message += f"🏢 <b>ЖК:</b> {name_jk}\n"
+    success_message += f"🏠 <b>Квартира:</b> {appartment}\n\n"
+    success_message += f"📊 <b>Адреса:</b> {updated_subscription_info['current_addresses']}/{updated_subscription_info['max_addresses']}\n"
+    
+    # Если близко к лимиту, предлагаем апгрейд
+    if (updated_subscription_info['max_addresses'] - updated_subscription_info['current_addresses'] <= 1 
+        and updated_subscription_info['tier'] != SubscriptionTier.VIP):
+        success_message += "\n💡 <i>Близко к лимиту! Рассмотрите возможность обновления тарифа</i>"
+    
+    await message.answer(success_message, parse_mode="HTML")
     await state.clear()

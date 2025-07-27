@@ -35,6 +35,7 @@ class UserRole(str, Enum):
     OWNER = "OWNER"
     GUEST = "GUEST"
     USER = "USER"
+    VIP = "VIP"
     ADMIN = "ADMIN"
     SUPERADMIN = "SUPERADMIN"
     MODERATOR = "MODERATOR"
@@ -50,6 +51,7 @@ class UserRole(str, Enum):
             "OWNER": "Владелец",
             "GUEST": "Гость",
             "USER": "Резидент",
+            "VIP": "👑 VIP-резидент",
             "ADMIN": "Администратор",
             "SUPERADMIN": "Суперадминистратор",
             "MODERATOR": "Модератор",

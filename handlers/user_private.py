@@ -55,6 +55,9 @@ from handlers.fsm.add_jk_fsm import add_jk_router
 from handlers.fsm.add_lot_fsm import add_lot_router
 from handlers.fsm.search_lot_fsm import search_lot_router
 from handlers.fsm.user_to_jk_fsm import user_to_jk_router
+from handlers.subscription_handlers import subscription_router
+from services.subscription_service import SubscriptionService
+from keyboards.subscription_keyboards import get_subscription_management_keyboard
 
 user_private_router = Router()
 user_private_router.message.filter(ChatTypeFilter(chat_types=["private"]))
@@ -64,6 +67,7 @@ user_private_router.include_router(search_lot_router)
 user_private_router.include_router(add_offer_router)
 user_private_router.include_router(my_offers_router)
 user_private_router.include_router(user_to_jk_router)
+user_private_router.include_router(subscription_router)
 
 NAVIGATION_KB = get_keyboard(
     "Назад",
@@ -527,11 +531,47 @@ async def my_profile_cmd(message: Message, session: AsyncSession):
         text,
         parse_mode="HTML",
         reply_markup=get_keyboard(
+            "Моя подписка 💎",
         #    "Удалить профиль ❌",
             "Главное меню 🏠",
             placeholder="User Profile Menu",
             sizes=(1, 1),
         ),
+    )
+
+
+# Обработчик команды "Моя подписка"
+@user_private_router.message(F.text.lower().contains("подписк"))
+@user_private_router.message(Command("subscription"))
+async def my_subscription_cmd(message: Message, session: AsyncSession):
+    """Показать информацию о подписке пользователя"""
+    user_id = message.from_user.id
+    
+    # Проверяем регистрацию пользователя
+    user = await orm_get_user_by_id(session, user_id)
+    if not user:
+        await message.answer("❌ Пользователь не найден. Пожалуйста, выполните команду /start")
+        return
+    
+    # Получаем информацию о подписке
+    subscription_info = await SubscriptionService.get_user_subscription_info(
+        session, user_id
+    )
+    
+    # Форматируем сообщение
+    message_text = SubscriptionService.format_subscription_message(subscription_info)
+    
+    # Добавляем дополнительную информацию
+    if subscription_info["has_subscription"] and subscription_info["expires_at"]:
+        message_text += f"\n📅 <b>Действует до:</b> {subscription_info['expires_at'].strftime('%d.%m.%Y')}"
+    
+    # Клавиатура управления
+    keyboard = get_subscription_management_keyboard(user_id, subscription_info)
+    
+    await message.answer(
+        message_text,
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
 
 
