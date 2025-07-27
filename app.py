@@ -64,6 +64,10 @@ dp.include_router(moderator_role_router)  # команда /is_moderator
 dp.include_router(role_application_router)  # FSM подачи заявок на роли
 dp.include_router(creator_moderation_router)  # модерация заявок создателем
 
+# Подключаем партнерскую панель
+from handlers.partner_panel import partner_router
+dp.include_router(partner_router)  # партнерская панель
+
 dp.include_router(user_group_router)  # для групповых чатов
 dp.include_router(admin_router)  # для личных сообщений от администраторов
 

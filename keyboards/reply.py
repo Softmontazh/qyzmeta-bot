@@ -66,3 +66,13 @@ MANAGE_OFFER_STATUS_KB = get_keyboard(
     placeholder="Управление заявками",
     sizes=(1, 1, 1, 1, 1),
 )
+
+PARTNER_PANEL_KB = get_keyboard(
+    "ЖК под управлением",
+    "Аналитика",
+    "Кабинет партнера",
+    "Поддержка",
+    "Выйти из режима партнера",
+    placeholder="Панель партнера",
+    sizes=(1, 1, 1, 1, 1),
+)

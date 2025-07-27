@@ -15,13 +15,17 @@ class ApplicationStatus(str, Enum):
     PENDING = "PENDING"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
+    EDIT_REQUEST = "EDIT_REQUEST"
+    DELETE_REQUEST = "DELETE_REQUEST"
     
     def get_russian_name(self):
         """Возвращает русское название статуса"""
         status_names = {
             "PENDING": "⏳ Ожидает рассмотрения",
             "APPROVED": "✅ Одобрена",
-            "REJECTED": "❌ Отклонена"
+            "REJECTED": "❌ Отклонена",
+            "EDIT_REQUEST": "✏️ Запрос на редактирование",
+            "DELETE_REQUEST": "🗑️ Запрос на удаление"
         }
         return status_names.get(self.value, self.value)
 

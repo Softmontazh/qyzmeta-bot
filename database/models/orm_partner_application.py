@@ -114,3 +114,38 @@ async def orm_has_pending_application(session: AsyncSession, user_id: int) -> bo
     
     result = await session.execute(query)
     return result.scalar_one_or_none() is not None
+
+
+async def orm_get_approved_partner_application(
+    session: AsyncSession, 
+    user_id: int
+) -> Optional[PartnerApplication]:
+    """Получить одобренную заявку партнера"""
+    stmt = select(PartnerApplication).where(
+        PartnerApplication.user_id == user_id,
+        PartnerApplication.status == ApplicationStatus.APPROVED
+    )
+    result = await session.execute(stmt)
+    return result.scalar_one_or_none()
+
+
+async def orm_delete_partner_application(
+    session: AsyncSession,
+    application_id: int
+) -> bool:
+    """Удалить заявку партнера"""
+    from sqlalchemy import delete
+    stmt = delete(PartnerApplication).where(PartnerApplication.id == application_id)
+    result = await session.execute(stmt)
+    await session.commit()
+    return result.rowcount > 0
+
+
+async def orm_get_edit_request_applications(session: AsyncSession) -> List[PartnerApplication]:
+    """Получить все заявки с запросом на редактирование"""
+    query = select(PartnerApplication).where(
+        PartnerApplication.status == ApplicationStatus.EDIT_REQUEST
+    ).order_by(PartnerApplication.created_at.desc())
+    
+    result = await session.execute(query)
+    return result.scalars().all()

@@ -4,6 +4,7 @@ from aiogram import Router, F
 from aiogram.types import Message, CallbackQuery
 from aiogram.filters import Command
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
 from database.models.orm_user import orm_get_user_by_telegram_id
 from database.enums.user_enums import UserRole
@@ -16,19 +17,45 @@ router = Router()
 @router.message(Command("is_partner"))
 async def handle_is_partner_command(message: Message, session: AsyncSession):
     """Обработка команды /is_partner"""
-    user = await orm_get_user_by_telegram_id(session, message.from_user.id)
+    user_id = message.from_user.id
+    user = await orm_get_user_by_telegram_id(session, user_id)
     
-    if user and user.role == UserRole.PARTNER:
-        # У пользователя есть роль партнера - показываем панель
+    # Проверяем наличие одобренной заявки партнера
+    from database.models.model_partner_application import PartnerApplication
+    from database.enums.user_enums import ApplicationStatus
+    from keyboards.reply import PARTNER_PANEL_KB
+    
+    stmt = select(PartnerApplication).where(
+        PartnerApplication.user_id == user_id,
+        PartnerApplication.status == ApplicationStatus.APPROVED
+    ).limit(1)
+    result = await session.execute(stmt)
+    approved_application = result.scalar_one_or_none()
+    
+    print(f"DEBUG /is_partner: user_id={user_id}, approved_application={approved_application}")
+    
+    if approved_application:
+        # У пользователя есть одобренная заявка - показываем партнерскую панель
         await message.answer(
-            "🤝 <b>Панель партнера</b>\n\n"
-            "Добро пожаловать в партнерскую панель!\n"
-            "Выберите необходимое действие:",
+            f"🤝 <b>Добро пожаловать, партнер!</b>\n\n"
+            f"👤 <b>Партнер:</b> {approved_application.full_name}\n"
+            f"🏢 <b>Компания:</b> {approved_application.company}\n\n"
+            f"📊 Выберите необходимое действие в партнерской панели:",
             parse_mode="HTML",
-            reply_markup=get_partner_panel_keyboard()
+            reply_markup=PARTNER_PANEL_KB
         )
     else:
         # Роли нет - предлагаем подать заявку
+        from keyboards.reply import MAIN_KB
+        from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
+        
+        # Создаем inline-кнопку для подачи заявки
+        apply_keyboard = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="📝 Стать партнером", callback_data="apply_for_role:PARTNER")]
+            ]
+        )
+        
         await message.answer(
             "🤝 <b>Роль партнера</b>\n\n"
             "❌ У вас нет роли партнера платформы.\n\n"
@@ -40,76 +67,8 @@ async def handle_is_partner_command(message: Message, session: AsyncSession):
             "• Управлению несколькими ЖК\n"
             "• Расширенной аналитике\n"
             "• Приоритетной поддержке\n"
-            "• Специальным инструментам",
+            "• Специальным инструментам\n\n"
+            "� Нажмите кнопку ниже для подачи заявки:",
             parse_mode="HTML",
-            reply_markup=get_role_request_keyboard("partner")
+            reply_markup=apply_keyboard
         )
-
-
-@router.callback_query(F.data == "partner_jks")
-async def handle_partner_jks(callback: CallbackQuery):
-    """Управление ЖК партнера"""
-    await callback.message.edit_text(
-        "🏢 <b>Мои ЖК</b>\n\n"
-        "🚧 Функция в разработке\n\n"
-        "Здесь будет:\n"
-        "• Список ваших ЖК\n"
-        "• Добавление новых ЖК\n"
-        "• Управление настройками\n"
-        "• Статистика по каждому ЖК",
-        parse_mode="HTML",
-        reply_markup=get_partner_panel_keyboard()
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "partner_analytics")
-async def handle_partner_analytics(callback: CallbackQuery):
-    """Аналитика партнера"""
-    await callback.message.edit_text(
-        "📈 <b>Аналитика</b>\n\n"
-        "🚧 Функция в разработке\n\n"
-        "Здесь будет:\n"
-        "• Общая статистика по ЖК\n"
-        "• Активность жителей\n"
-        "• Эффективность заявок\n"
-        "• Финансовые отчеты",
-        parse_mode="HTML",
-        reply_markup=get_partner_panel_keyboard()
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "partner_tools")
-async def handle_partner_tools(callback: CallbackQuery):
-    """Инструменты партнера"""
-    await callback.message.edit_text(
-        "🛠️ <b>Инструменты</b>\n\n"
-        "🚧 Функция в разработке\n\n"
-        "Здесь будет:\n"
-        "• Массовые операции\n"
-        "• Импорт/экспорт данных\n"
-        "• Автоматизация процессов\n"
-        "• Интеграции с внешними системами",
-        parse_mode="HTML",
-        reply_markup=get_partner_panel_keyboard()
-    )
-    await callback.answer()
-
-
-@router.callback_query(F.data == "partner_support")
-async def handle_partner_support(callback: CallbackQuery):
-    """Поддержка партнера"""
-    await callback.message.edit_text(
-        "📞 <b>Поддержка</b>\n\n"
-        "🎧 Приоритетная поддержка для партнеров\n\n"
-        "📱 <b>Контакты:</b>\n"
-        "• Telegram: @bySpecialist\n"
-        "• Email: partner@softmontazh.kz\n"
-        "• Телефон: +7 (XXX) XXX-XX-XX\n\n"
-        "⏰ Время работы: 9:00 - 18:00 (UTC+6)\n"
-        "🚀 Время ответа: до 2 часов",
-        parse_mode="HTML",
-        reply_markup=get_partner_panel_keyboard()
-    )
-    await callback.answer()
