@@ -23,6 +23,7 @@ from handlers.service_providers_view import router as service_providers_view_rou
 from handlers.service_provider_panel import service_provider_panel_router
 from handlers.fsm.become_service_provider_fsm import become_service_provider_router
 from handlers.offer_media_handlers import offer_media_router
+from handlers.business_models import business_models_router
 
 # Импорт роутеров системы ролей
 from handlers.platform_roles.admin_role_handler import router as admin_role_router
@@ -56,6 +57,7 @@ dp.include_router(manage_offer_status_router)  # для управления с�
 dp.include_router(service_provider_panel_router)  # для панели управления поставщиков услуг
 dp.include_router(offer_status_router)  # для управления статусами через кнопки
 dp.include_router(offer_media_router)  # для работы с медиафайлами заявок через BUS
+dp.include_router(business_models_router)  # для управления бизнес-моделями (только создатели)
 
 # Подключаем роутеры системы ролей
 dp.include_router(admin_role_router)  # команда /is_admin

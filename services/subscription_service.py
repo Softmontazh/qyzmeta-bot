@@ -263,3 +263,8 @@ class SubscriptionService:
             message += f"💰 <b>Стоимость:</b> {info['monthly_price']:,} ₸/мес\n"
         
         return message
+
+    @staticmethod
+    async def get_all_subscriptions(session: AsyncSession) -> List:
+        """Получить список всех подписок в системе"""
+        return await orm_get_all_subscriptions(session)

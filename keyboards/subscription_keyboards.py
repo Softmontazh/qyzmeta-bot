@@ -73,8 +73,7 @@ def get_admin_subscription_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура для админ панели подписок"""
     builder = InlineKeyboardBuilder()
     
-    # Основные разделы
-    builder.button(text="📊 Статистика", callback_data="admin_sub_stats")
+    # Основные разделы (убрали кнопку "Статистика")
     builder.button(text="🔍 Поиск пользователя", callback_data="admin_sub_search")
     builder.button(text="📋 Все подписки", callback_data="admin_sub_list")
     builder.button(text="⚠️ Истекающие", callback_data="admin_sub_expiring")
@@ -83,10 +82,9 @@ def get_admin_subscription_keyboard() -> InlineKeyboardMarkup:
     builder.button(text="🔄 Обновить просроченные", callback_data="admin_sub_expire")
     builder.button(text="➕ Создать подписку", callback_data="admin_sub_create")
     
-    # Назад
-    builder.button(text="🔙 Назад", callback_data="admin_business_models")
+    # Убрали кнопку "🔙 Назад" - пользователь может использовать reply-кнопку "Главное меню"
     
-    builder.adjust(2, 2, 2, 1)
+    builder.adjust(2, 1, 2)
     return builder.as_markup()
 
 
