@@ -746,6 +746,351 @@ partners = await orm_get_approved_partners(session)
 
 ---
 
+## 💰 Модель: UserSubscription (user_subscriptions)
+
+**Назначение**: Система управления подписками и тарифными планами пользователей
+
+### Структура таблицы
+
+| Поле | Тип | Описание | Особенности |
+|------|-----|----------|-------------|
+| `id` | Integer | ID подписки | PK, автоинкремент |
+| `user_id` | BigInteger | Telegram User ID | FK to users.user_id, индекс |
+| `tier` | SubscriptionTier | Тарифный план | Enum: FREE, BASIC, PREMIUM, VIP |
+| `status` | SubscriptionStatus | Статус подписки | Enum: ACTIVE, EXPIRED, CANCELLED |
+| `max_addresses` | Integer | Лимит адресов | NOT NULL |
+| `started_at` | DateTime | Дата начала | NOT NULL |
+| `expires_at` | DateTime | Дата окончания | Nullable для бессрочных |
+| `payment_info` | Text | Информация об оплате | Nullable |
+| `notes` | Text | Заметки администратора | Nullable |
+| `created_at` | DateTime | Дата создания | NOT NULL |
+| `updated_at` | DateTime | Дата обновления | AUTO UPDATE |
+
+### Тарифные планы (SubscriptionTier)
+
+| Тариф | Лимит адресов | Особенности |
+|-------|---------------|-------------|
+| `FREE` | 1 | Базовая функциональность |
+| `BASIC` | 3 | Приоритетные уведомления, поддержка |
+| `PREMIUM` | 10 | Эксклюзивные предложения, персональный менеджер |
+| `VIP` | 999 | VIP статус, персональный консультант |
+
+### Статусы подписок (SubscriptionStatus)
+
+| Статус | Описание |
+|--------|----------|
+| `ACTIVE` | Активная подписка |
+| `EXPIRED` | Истекшая подписка |
+| `CANCELLED` | Отмененная подписка |
+
+### Методы модели
+
+```python
+@property
+def is_expiring_soon(self) -> bool:
+    """Истекает ли подписка в ближайшие 7 дней"""
+    if not self.expires_at:
+        return False
+    return (self.expires_at - datetime.now(timezone.utc)).days <= 7
+
+@property
+def days_left(self) -> int:
+    """Количество дней до истечения"""
+    if not self.expires_at:
+        return -1
+    delta = self.expires_at - datetime.now(timezone.utc)
+    return max(0, delta.days)
+
+def get_tier_display(self) -> str:
+    """Отображаемое название тарифа"""
+    return self.tier.get_russian_name()
+
+def get_status_display(self) -> str:
+    """Отображаемое название статуса"""
+    return self.status.get_russian_name()
+```
+
+### ORM функции
+
+```python
+# Получение подписки пользователя
+subscription = await orm_get_user_subscription(session, user_id)
+
+# Создание подписки
+subscription = await orm_create_user_subscription(session, subscription_data)
+
+# Проверка лимита адресов
+current_count, max_allowed = await orm_check_address_limit(session, user_id)
+
+# Обновление тарифа
+await orm_update_subscription_tier(session, user_id, new_tier, duration_days=30)
+
+# Получение статистики
+stats = await orm_get_subscription_statistics(session)
+
+# Истечение просроченных подписок
+expired_count = await orm_expire_overdue_subscriptions(session)
+```
+
+### Индексы
+
+```sql
+CREATE INDEX idx_user_subscriptions_user_id ON user_subscriptions(user_id);
+CREATE INDEX idx_user_subscriptions_status ON user_subscriptions(status);
+CREATE INDEX idx_user_subscriptions_tier ON user_subscriptions(tier);
+CREATE INDEX idx_user_subscriptions_expires_at ON user_subscriptions(expires_at);
+CREATE INDEX idx_user_subscriptions_user_status_active ON user_subscriptions(user_id, status) WHERE status = 'ACTIVE';
+```
+
+---
+
+## 💎 Модель: SubscriptionPrice (subscription_prices)
+
+**Назначение**: Система динамического ценообразования с полной историей изменений
+
+### Структура таблицы
+
+| Поле | Тип | Описание | Особенности |
+|------|-----|----------|-------------|
+| `id` | Integer | ID записи | PK, автоинкремент |
+| `tier` | String(20) | Тарифный план | FREE, BASIC, PREMIUM, VIP |
+| `price` | Integer | Цена в тенге | NOT NULL |
+| `is_active` | Boolean | Активная цена | Default=True, индекс |
+| `created_at` | DateTime | Дата создания | NOT NULL |
+| `updated_at` | DateTime | Дата обновления | AUTO UPDATE |
+| `created_by` | Integer | ID администратора | Nullable |
+| `notes` | Text | Комментарий к изменению | Nullable |
+
+### Особенности
+
+- **История изменений** — каждое изменение цены создает новую запись
+- **Активная цена** — только одна запись на тариф может быть активной
+- **Валидация** — цены от 0 до 100,000 ₸
+- **Аудит** — полная трассировка кто и когда изменил цену
+
+### Методы модели
+
+```python
+@property
+def formatted_price(self) -> str:
+    """Форматированная цена для отображения"""
+    return f"{self.price:,} ₸" if self.price > 0 else "Бесплатно"
+
+@property
+def tier_display_name(self) -> str:
+    """Отображаемое название тарифа"""
+    tier_names = {
+        "FREE": "🆓 Бесплатный",
+        "BASIC": "⭐ Базовый", 
+        "PREMIUM": "💎 Премиум",
+        "VIP": "👑 VIP"
+    }
+    return tier_names.get(self.tier, self.tier)
+```
+
+### ORM функции
+
+```python
+# Получение текущих цен
+prices = await orm_get_active_prices(session)
+
+# Получение цены тарифа
+price_obj = await orm_get_price_by_tier(session, tier)
+
+# Обновление цены (создание новой записи)
+await orm_update_price(session, tier, new_price, admin_id, notes)
+
+# Инициализация цен по умолчанию
+await orm_initialize_default_prices(session, admin_id)
+
+# Получение истории изменений
+history = await orm_get_price_history(session, limit=10)
+```
+
+### Индексы
+
+```sql
+CREATE INDEX ix_subscription_prices_id ON subscription_prices(id);
+CREATE INDEX ix_subscription_prices_tier ON subscription_prices(tier);
+CREATE INDEX ix_subscription_prices_is_active ON subscription_prices(is_active);
+CREATE INDEX ix_subscription_prices_created_at ON subscription_prices(created_at);
+```
+
+### Система валидации
+
+```python
+def validate_price_input(price_text: str) -> Tuple[bool, int, str]:
+    """Валидация ввода цены"""
+    try:
+        price = int(price_text.strip())
+        
+        if price < 0:
+            return False, 0, "Цена не может быть отрицательной"
+        
+        if price > 100000:
+            return False, 0, "Цена не может превышать 100,000 ₸"
+        
+        return True, price, ""
+        
+    except ValueError:
+        return False, 0, "Введите корректное число"
+```
+
+---
+
+## 🚀 Сервисы подписок
+
+### PriceManagementService
+
+Основной сервис для управления ценами:
+
+```python
+class PriceManagementService:
+    @staticmethod
+    async def get_current_prices(session: AsyncSession) -> Dict
+    
+    @staticmethod
+    async def update_tier_price(session: AsyncSession, tier: SubscriptionTier, 
+                               new_price: int, updated_by: int, notes: str = None) -> Dict
+    
+    @staticmethod
+    async def get_price_history(session: AsyncSession, limit: int = 50) -> List[Dict]
+    
+    @staticmethod
+    async def get_management_summary(session: AsyncSession) -> Dict
+    
+    @staticmethod
+    def validate_price_input(price_text: str) -> Tuple[bool, int, str]
+    
+    @staticmethod
+    def format_price_change_message(tier, old_price, new_price, updated_by) -> str
+```
+
+### SubscriptionService
+
+Сервис для работы с подписками:
+
+```python
+class SubscriptionService:
+    @staticmethod
+    async def get_user_subscription_info(session: AsyncSession, user_id: int) -> Dict
+    
+    @staticmethod
+    async def check_can_register_address(session: AsyncSession, user_id: int) -> Tuple[bool, Dict]
+    
+    @staticmethod
+    async def upgrade_user_subscription(session: AsyncSession, user_id: int, 
+                                       new_tier: SubscriptionTier, duration_days: int = 30) -> Dict
+    
+    @staticmethod
+    async def get_subscription_analytics(session: AsyncSession) -> Dict
+    
+    @staticmethod
+    async def get_admin_statistics(session: AsyncSession) -> Dict
+```
+
+---
+
+## 📊 Аналитика подписок
+
+### Ключевые метрики
+
+1. **Общее количество пользователей** — подсчет всех записей в таблице users
+2. **Активные подписки** — количество платных подписок (исключая FREE)
+3. **Конверсия** — процент пользователей с платными подписками
+4. **ARPU** — средний доход на пользователя
+5. **Месячная выручка** — общий доход от всех подписок
+
+### Формат данных аналитики
+
+```python
+{
+    'total_users': 150,           # Общее количество пользователей
+    'active_subscriptions': 45,   # Активные платные подписки
+    'by_tier': [                  # Разбивка по тарифам
+        {
+            'tier': 'FREE',
+            'tier_display': '🆓 Бесплатный',
+            'count': 105,
+            'percentage': 70.0,
+            'revenue': 0
+        },
+        {
+            'tier': 'BASIC',
+            'tier_display': '⭐ Базовый',
+            'count': 30,
+            'percentage': 20.0,
+            'revenue': 89700
+        }
+    ],
+    'revenue': 447500,            # Общая месячная выручка
+    'free_users': 105,            # Бесплатные пользователи
+    'conversion_rate': 30.0       # Коэффициент конверсии в %
+}
+```
+
+---
+
+## 🔧 Миграции и обновления
+
+### Создание таблиц подписок
+
+```sql
+-- Создание enum типов
+CREATE TYPE subscription_tier AS ENUM ('FREE', 'BASIC', 'PREMIUM', 'VIP');
+CREATE TYPE subscription_status AS ENUM ('ACTIVE', 'EXPIRED', 'CANCELLED');
+
+-- Таблица подписок
+CREATE TABLE user_subscriptions (
+    id SERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL REFERENCES users(user_id),
+    tier subscription_tier NOT NULL DEFAULT 'FREE',
+    status subscription_status NOT NULL DEFAULT 'ACTIVE',
+    max_addresses INTEGER NOT NULL DEFAULT 1,
+    started_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    expires_at TIMESTAMP WITH TIME ZONE,
+    payment_info TEXT,
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- Таблица цен
+CREATE TABLE subscription_prices (
+    id SERIAL PRIMARY KEY,
+    tier VARCHAR(20) NOT NULL,
+    price INTEGER NOT NULL DEFAULT 0,
+    is_active BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    created_by INTEGER,
+    notes TEXT
+);
+```
+
+### Инициализация данных
+
+```python
+# Создание цен по умолчанию
+default_prices = [
+    {"tier": "FREE", "price": 0},
+    {"tier": "BASIC", "price": 2990},
+    {"tier": "PREMIUM", "price": 4990},
+    {"tier": "VIP", "price": 9990}
+]
+
+for price_data in default_prices:
+    await orm_update_price(
+        session, 
+        price_data["tier"], 
+        price_data["price"], 
+        admin_id=0, 
+        notes="Инициализация системы ценообразования"
+    )
+```
+
+---
+
 *Документация обновлена: 27 июля 2025 г.*  
-*Версия схемы БД: 2.2.0*  
+*Версия схемы БД: 2.3.0 — Добавлена система подписок и динамического ценообразования*  
 *Добавлена таблица partner_applications с системой управления партнерами*

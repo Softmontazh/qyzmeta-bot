@@ -6,6 +6,7 @@ from .model_lot import Lot
 from .model_lot_limit import LotLimit
 from .model_offer import Offer
 from .model_user_subscription import UserSubscription
+from .model_subscription_price import SubscriptionPrice
 
 __all__ = [
     "Base",
@@ -15,5 +16,6 @@ __all__ = [
     "Lot",
     "LotLimit", 
     "Offer",
-    "UserSubscription"
+    "UserSubscription",
+    "SubscriptionPrice"
 ]

@@ -24,6 +24,7 @@ from handlers.service_provider_panel import service_provider_panel_router
 from handlers.fsm.become_service_provider_fsm import become_service_provider_router
 from handlers.offer_media_handlers import offer_media_router
 from handlers.business_models import business_models_router
+from handlers.subscription_management import subscription_management_router
 
 # Импорт роутеров системы ролей
 from handlers.platform_roles.admin_role_handler import router as admin_role_router
@@ -58,6 +59,7 @@ dp.include_router(service_provider_panel_router)  # для панели упра
 dp.include_router(offer_status_router)  # для управления статусами через кнопки
 dp.include_router(offer_media_router)  # для работы с медиафайлами заявок через BUS
 dp.include_router(business_models_router)  # для управления бизнес-моделями (только создатели)
+dp.include_router(subscription_management_router)  # для управления подписками и ценами
 
 # Подключаем роутеры системы ролей
 dp.include_router(admin_role_router)  # команда /is_admin
@@ -86,6 +88,15 @@ async def on_startup():
         print("Сброс базы данных...")
         await drop_db()  # сброс базы данных
     await create_db()  # создание базы данных
+    
+    # Инициализируем цены подписок по умолчанию
+    try:
+        from database.migrations.init_default_prices import initialize_default_subscription_prices
+        async with session_maker() as session:
+            await initialize_default_subscription_prices(session, created_by=0)
+        print("✅ Инициализация цен подписок завершена")
+    except Exception as e:
+        print(f"⚠️ Предупреждение при инициализации цен: {e}")
 
 
 """Создание базы данных завершено"""

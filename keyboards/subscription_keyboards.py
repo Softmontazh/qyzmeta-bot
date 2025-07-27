@@ -38,7 +38,7 @@ def get_subscription_upgrade_keyboard(
     return builder.as_markup()
 
 
-def get_subscription_management_keyboard(
+def get_user_subscription_management_keyboard(
     user_id: int,
     subscription_info: Dict
 ) -> InlineKeyboardMarkup:
@@ -73,18 +73,77 @@ def get_admin_subscription_keyboard() -> InlineKeyboardMarkup:
     """Клавиатура для админ панели подписок"""
     builder = InlineKeyboardBuilder()
     
-    # Основные разделы (убрали кнопку "Статистика")
+    # Основные разделы
     builder.button(text="🔍 Поиск пользователя", callback_data="admin_sub_search")
     builder.button(text="📋 Все подписки", callback_data="admin_sub_list")
     builder.button(text="⚠️ Истекающие", callback_data="admin_sub_expiring")
     
     # Управление
     builder.button(text="🔄 Обновить просроченные", callback_data="admin_sub_expire")
-    builder.button(text="➕ Создать подписку", callback_data="admin_sub_create")
-    
-    # Убрали кнопку "🔙 Назад" - пользователь может использовать reply-кнопку "Главное меню"
+    builder.button(text="⚙️ Управление подписками", callback_data="subscription_management")
     
     builder.adjust(2, 1, 2)
+    return builder.as_markup()
+
+
+def get_price_management_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура для управления ценами подписок"""
+    builder = InlineKeyboardBuilder()
+    
+    # Кнопки для каждого тарифа (кроме FREE)
+    for tier in SubscriptionTier:
+        if tier != SubscriptionTier.FREE:  # FREE всегда бесплатный
+            builder.button(
+                text=f"💰 {tier.get_russian_name()}",
+                callback_data=f"edit_price_{tier.value}"
+            )
+    
+    # Назад
+    builder.button(text="🔙 Назад", callback_data="back_to_subscription_management")
+    
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def get_price_confirm_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура подтверждения изменения цены"""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(
+        text="✅ Подтвердить",
+        callback_data="confirm_price_change"
+    )
+    builder.button(
+        text="❌ Отменить",
+        callback_data="cancel_price_change"
+    )
+    
+    builder.adjust(2)
+    return builder.as_markup()
+
+
+def get_subscription_management_keyboard() -> InlineKeyboardMarkup:
+    """Главная клавиатура управления подписками"""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(text="💰 Управление ценами", callback_data="price_management")
+    builder.button(text="📊 Аналитика подписок", callback_data="subscription_analytics")
+    builder.button(text="📜 История изменений", callback_data="price_history")
+    builder.button(text="🔙 Назад", callback_data="creator_panel")
+    
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def get_back_to_management_keyboard() -> InlineKeyboardMarkup:
+    """Клавиатура возврата к управлению подписками"""
+    builder = InlineKeyboardBuilder()
+    
+    builder.button(
+        text="🔙 К управлению подписками", 
+        callback_data="back_to_subscription_management"
+    )
+    
     return builder.as_markup()
 
 

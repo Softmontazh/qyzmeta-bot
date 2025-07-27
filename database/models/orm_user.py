@@ -79,3 +79,11 @@ async def orm_get_user_role(session: AsyncSession, user_id: int):
     query = select(User.role)
     result = await session.execute(query.where(User.user_id == user_id))
     return result.scalar_one_or_none()  # Возвращает роль или None, если не найден
+
+
+async def orm_get_total_users_count(session: AsyncSession) -> int:
+    """Получение общего количества пользователей."""
+    from sqlalchemy import func
+    query = select(func.count(User.id))
+    result = await session.execute(query)
+    return result.scalar() or 0

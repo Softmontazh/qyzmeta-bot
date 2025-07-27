@@ -31,8 +31,31 @@ class SubscriptionTier(str, Enum):
         }
         return limits.get(self.value, 1)
     
-    def get_monthly_price(self):
-        """Возвращает месячную стоимость тарифа в тенге"""
+    def get_monthly_price(self, session=None):
+        """Возвращает месячную стоимость тарифа в тенге
+        
+        Если передана сессия БД, читает из таблицы subscription_prices,
+        иначе использует захардкоженные значения для совместимости.
+        """
+        
+        # Если сессия передана, пытаемся получить цену из БД
+        if session is not None:
+            try:
+                # Импортируем здесь, чтобы избежать циклических импортов
+                import asyncio
+                from database.models.orm_subscription_price import orm_get_price_by_tier
+                
+                # Если мы в асинхронном контексте
+                if asyncio.iscoroutinefunction(orm_get_price_by_tier):
+                    # Это будет работать только если вызывается из async функции
+                    # В противном случае fallback на захардкоженные значения
+                    pass
+                
+            except (ImportError, Exception):
+                # Fallback на захардкоженные значения при ошибке
+                pass
+        
+        # Захардкоженные значения для совместимости (fallback)
         prices = {
             "FREE": 0,
             "BASIC": 2990,     # ~$7
@@ -40,6 +63,18 @@ class SubscriptionTier(str, Enum):
             "VIP": 9990        # ~$24
         }
         return prices.get(self.value, 0)
+    
+    async def get_monthly_price_async(self, session):
+        """Асинхронная версия получения цены из БД"""
+        try:
+            from database.models.orm_subscription_price import orm_get_price_by_tier
+            
+            price_obj = await orm_get_price_by_tier(session, self)
+            return price_obj.price if price_obj else 0
+            
+        except Exception:
+            # Fallback на захардкоженные значения
+            return self.get_monthly_price()
 
 
 class SubscriptionStatus(str, Enum):

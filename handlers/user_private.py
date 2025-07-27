@@ -57,7 +57,7 @@ from handlers.fsm.search_lot_fsm import search_lot_router
 from handlers.fsm.user_to_jk_fsm import user_to_jk_router
 from handlers.subscription_handlers import subscription_router
 from services.subscription_service import SubscriptionService
-from keyboards.subscription_keyboards import get_subscription_management_keyboard
+from keyboards.subscription_keyboards import get_user_subscription_management_keyboard
 
 user_private_router = Router()
 user_private_router.message.filter(ChatTypeFilter(chat_types=["private"]))
@@ -566,7 +566,7 @@ async def my_subscription_cmd(message: Message, session: AsyncSession):
         message_text += f"\n📅 <b>Действует до:</b> {subscription_info['expires_at'].strftime('%d.%m.%Y')}"
     
     # Клавиатура управления
-    keyboard = get_subscription_management_keyboard(user_id, subscription_info)
+    keyboard = get_user_subscription_management_keyboard(user_id, subscription_info)
     
     await message.answer(
         message_text,

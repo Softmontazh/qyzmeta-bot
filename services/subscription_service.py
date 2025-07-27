@@ -17,6 +17,7 @@ from database.models.orm_user_subscription import (
     orm_get_expiring_subscriptions,
     orm_get_all_subscriptions
 )
+from database.models.orm_user import orm_get_total_users_count
 from database.enums.subscription_enums import SubscriptionTier, SubscriptionStatus
 
 
@@ -268,3 +269,82 @@ class SubscriptionService:
     async def get_all_subscriptions(session: AsyncSession) -> List:
         """Получить список всех подписок в системе"""
         return await orm_get_all_subscriptions(session)
+
+    @staticmethod
+    async def get_subscription_analytics(session: AsyncSession) -> Dict:
+        """Получить аналитику подписок для отображения в админ панели"""
+        try:
+            # Получаем общее количество пользователей
+            total_users = await orm_get_total_users_count(session)
+            
+            # Получаем статистику подписок
+            subscription_stats = await orm_get_subscription_statistics(session)
+            
+            # Получаем текущие цены из базы данных
+            from services.price_management_service import PriceManagementService
+            current_prices = await PriceManagementService.get_current_prices(session)
+            
+            # Считаем выручку и формируем разбивку по тарифам
+            total_revenue = 0
+            tier_breakdown = []
+            active_subscriptions = 0
+            
+            for tier_value, tier_data in subscription_stats['tier_stats'].items():
+                count = tier_data['count']
+                
+                # Получаем цену из базы данных
+                price_data = current_prices.get(tier_value, {})
+                price = price_data.get('price', 0)
+                revenue = count * price
+                
+                if count > 0 and tier_value != SubscriptionTier.FREE.value:
+                    active_subscriptions += count
+                
+                total_revenue += revenue
+                
+                # Вычисляем процент от общего количества пользователей
+                percentage = (count / total_users) * 100 if total_users > 0 else 0
+                
+                tier_breakdown.append({
+                    'tier': tier_value,
+                    'tier_display': tier_data['name'],
+                    'count': count,
+                    'percentage': percentage,
+                    'revenue': revenue
+                })
+            
+            # Добавляем пользователей без платных подписок (на FREE тарифе)
+            free_users = total_users - active_subscriptions
+            if free_users > 0:
+                # Обновляем данные для FREE тарифа
+                for tier_data in tier_breakdown:
+                    if tier_data['tier'] == SubscriptionTier.FREE.value:
+                        tier_data['count'] = free_users
+                        tier_data['percentage'] = (free_users / total_users) * 100 if total_users > 0 else 0
+                        break
+            
+            # Сортируем по количеству пользователей
+            tier_breakdown.sort(key=lambda x: x['count'], reverse=True)
+            
+            # Рассчитываем коэффициент конверсии
+            conversion_rate = (active_subscriptions / total_users * 100) if total_users > 0 else 0
+            
+            return {
+                'total_users': total_users,
+                'active_subscriptions': active_subscriptions,
+                'by_tier': tier_breakdown,
+                'revenue': total_revenue,
+                'free_users': free_users,
+                'conversion_rate': conversion_rate
+            }
+            
+        except Exception as e:
+            # Возвращаем пустую статистику в случае ошибки
+            return {
+                'total_users': 0,
+                'active_subscriptions': 0,
+                'by_tier': [],
+                'revenue': 0,
+                'free_users': 0,
+                'conversion_rate': 0.0
+            }

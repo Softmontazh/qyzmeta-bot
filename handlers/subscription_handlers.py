@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from services.subscription_service import SubscriptionService
 from keyboards.subscription_keyboards import (
     get_subscription_upgrade_keyboard,
-    get_subscription_management_keyboard,
+    get_user_subscription_management_keyboard,
     get_tier_comparison_keyboard,
     get_subscription_duration_keyboard,
     get_payment_confirmation_keyboard,
@@ -327,7 +327,7 @@ async def back_to_subscription(callback: CallbackQuery, session: AsyncSession):
     )
     
     message = SubscriptionService.format_subscription_message(subscription_info)
-    keyboard = get_subscription_management_keyboard(user_id, subscription_info)
+    keyboard = get_user_subscription_management_keyboard(user_id, subscription_info)
     
     await callback.message.edit_text(
         message,
