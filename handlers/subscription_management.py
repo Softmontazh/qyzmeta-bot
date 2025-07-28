@@ -24,6 +24,11 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 subscription_management_router = Router()
 
 
+def escape_html_error(error: Exception) -> str:
+    """Экранировать сообщение об ошибке для HTML"""
+    return str(error).replace('<', '&lt;').replace('>', '&gt;')
+
+
 class PriceEditStates(StatesGroup):
     waiting_for_price = State()
     confirming_price = State()
@@ -70,7 +75,7 @@ async def subscription_management_menu(callback: CallbackQuery, session: AsyncSe
         back_keyboard.button(text="🔙 Назад", callback_data="creator_panel")
         
         await callback.message.edit_text(
-            f"❌ Ошибка при загрузке управления подписками: {str(e)}",
+            f"❌ Ошибка при загрузке управления подписками: {escape_html_error(e)}",
             reply_markup=back_keyboard.as_markup(),
             parse_mode="HTML"
         )
@@ -102,7 +107,7 @@ async def price_management_menu(callback: CallbackQuery, session: AsyncSession):
         
     except Exception as e:
         await callback.message.edit_text(
-            f"❌ Ошибка при загрузке цен: {str(e)}",
+            f"❌ Ошибка при загрузке цен: {escape_html_error(e)}",
             reply_markup=get_back_to_management_keyboard(),
             parse_mode="HTML"
         )
@@ -149,7 +154,7 @@ async def start_price_edit(callback: CallbackQuery, state: FSMContext, session: 
             f"<i>Примеры:</i>\n"
             f"• 2990 (для 2,990 ₸)\n"
             f"• 5000 (для 5,000 ₸)\n"
-            f"• 0 (отключить тариф)</i>"
+            f"• 0 (отключить тариф)"
         )
         
         if tier == SubscriptionTier.FREE:
@@ -161,7 +166,7 @@ async def start_price_edit(callback: CallbackQuery, state: FSMContext, session: 
         
     except Exception as e:
         await callback.message.edit_text(
-            f"❌ Ошибка при начале редактирования: {str(e)}",
+            f"❌ Ошибка при начале редактирования: {escape_html_error(e)}",
             reply_markup=get_back_to_management_keyboard(),
             parse_mode="HTML"
         )
@@ -265,31 +270,27 @@ async def confirm_price_change(callback: CallbackQuery, state: FSMContext, sessi
         if result["success"]:
             await session.commit()
             
-            # Формируем сообщение об успехе
-            success_msg = PriceManagementService.format_price_change_message(
-                tier=tier,
-                old_price=current_price,
-                new_price=new_price,
-                updated_by=user_id
-            )
-            
-            text = f"✅ <b>Цена успешно обновлена!</b>\n\n{success_msg}"
+            # Простое сообщение без использования result объекта
+            text = f"Цена успешно обновлена!\nТариф: {tier.value}\nНовая цена: {new_price}"
             
             keyboard = get_back_to_management_keyboard()
             
-            await callback.message.edit_text(text, reply_markup=keyboard, parse_mode="HTML")
+            await callback.message.edit_text(text, reply_markup=keyboard)
             
         else:
             await callback.message.edit_text(
-                f"❌ Ошибка: {result['error']}",
-                reply_markup=get_back_to_management_keyboard(),
-                parse_mode="HTML"
+                f"Ошибка: {result['error']}",
+                reply_markup=get_back_to_management_keyboard()
             )
         
     except Exception as e:
         await session.rollback()
+        
+        # Экранируем сообщение об ошибке для HTML
+        error_msg = escape_html_error(e)
+        
         await callback.message.edit_text(
-            f"❌ Ошибка при обновлении цены: {str(e)}",
+            f"❌ Ошибка при обновлении цены: {error_msg}",
             reply_markup=get_back_to_management_keyboard(),
             parse_mode="HTML"
         )
@@ -340,7 +341,7 @@ async def show_price_history(callback: CallbackQuery, session: AsyncSession):
         
     except Exception as e:
         await callback.message.edit_text(
-            f"❌ Ошибка при загрузке истории: {str(e)}",
+            f"❌ Ошибка при загрузке истории: {escape_html_error(e)}",
             reply_markup=get_back_to_management_keyboard(),
             parse_mode="HTML"
         )
@@ -378,7 +379,7 @@ async def show_subscription_analytics(callback: CallbackQuery, session: AsyncSes
         
     except Exception as e:
         await callback.message.edit_text(
-            f"❌ Ошибка при загрузке аналитики: {str(e)}",
+            f"❌ Ошибка при загрузке аналитики: {escape_html_error(e)}",
             reply_markup=get_back_to_management_keyboard(),
             parse_mode="HTML"
         )

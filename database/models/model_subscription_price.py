@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # database/models/model_subscription_price.py
 
-from sqlalchemy import Column, Integer, String, DateTime, Boolean, Text
+from sqlalchemy import Column, Integer, BigInteger, String, DateTime, Boolean, Text
 from sqlalchemy.sql import func
 from datetime import datetime, timezone
 
@@ -19,7 +19,7 @@ class SubscriptionPrice(Base):
     is_active = Column(Boolean, default=True, nullable=False)  # Активна ли цена
     created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
-    created_by = Column(Integer, nullable=True)  # ID создателя, который изменил цену
+    created_by = Column(BigInteger, nullable=True)  # ID создателя (Telegram user_id может быть большим)
     notes = Column(Text, nullable=True)  # Заметки о изменении цены
 
     def __repr__(self):

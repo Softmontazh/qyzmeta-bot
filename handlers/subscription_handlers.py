@@ -77,7 +77,7 @@ async def start_subscription_upgrade(callback: CallbackQuery, session: AsyncSess
     )
     
     current_tier = subscription_info["tier"]
-    suggestions = SubscriptionService.get_upgrade_suggestions(current_tier)
+    suggestions = await SubscriptionService.get_upgrade_suggestions(session, current_tier)
     
     if not suggestions:
         await callback.answer("✅ У вас уже максимальный тариф!", show_alert=True)
@@ -99,7 +99,7 @@ async def start_subscription_upgrade(callback: CallbackQuery, session: AsyncSess
 
 
 @subscription_router.callback_query(F.data.startswith("upgrade_tier:"))
-async def select_upgrade_tier(callback: CallbackQuery, state: FSMContext):
+async def select_upgrade_tier(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     """Выбор тарифа для апгрейда"""
     tier_value = callback.data.split(":")[1]
     tier = SubscriptionTier(tier_value)
@@ -107,9 +107,12 @@ async def select_upgrade_tier(callback: CallbackQuery, state: FSMContext):
     await state.update_data(selected_tier=tier)
     await state.set_state(SubscriptionStates.selecting_duration)
     
+    # Получаем актуальную цену из базы данных
+    monthly_price = await tier.get_monthly_price_async(session)
+    
     message = f"⏰ <b>Выберите срок подписки</b>\n\n"
     message += f"🎯 <b>Тариф:</b> {tier.get_russian_name()}\n"
-    message += f"💰 <b>Стоимость:</b> {tier.get_monthly_price():,} ₸/мес\n\n"
+    message += f"💰 <b>Стоимость:</b> {monthly_price:,} ₸/мес\n\n"
     message += "📅 <b>Варианты оплаты:</b>"
     
     keyboard = get_subscription_duration_keyboard()
@@ -123,7 +126,7 @@ async def select_upgrade_tier(callback: CallbackQuery, state: FSMContext):
 
 
 @subscription_router.callback_query(F.data.startswith("sub_duration:"))
-async def select_subscription_duration(callback: CallbackQuery, state: FSMContext):
+async def select_subscription_duration(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     """Выбор длительности подписки"""
     duration_days = int(callback.data.split(":")[1])
     
@@ -137,8 +140,8 @@ async def select_subscription_duration(callback: CallbackQuery, state: FSMContex
     await state.update_data(duration_days=duration_days)
     await state.set_state(SubscriptionStates.confirming_payment)
     
-    # Расчет стоимости
-    monthly_price = tier.get_monthly_price()
+    # Получаем актуальную цену из базы данных
+    monthly_price = await tier.get_monthly_price_async(session)
     total_price = monthly_price * (duration_days / 30)
     
     message = f"💳 <b>Подтверждение платежа</b>\n\n"
@@ -175,8 +178,9 @@ async def confirm_payment(callback: CallbackQuery, session: AsyncSession, state:
     # В реальном приложении здесь была бы интеграция с платежной системой
     # Пока что просто создаем подписку напрямую
     
-    # Формируем информацию о платеже
-    total_price = tier.get_monthly_price() * (duration_days / 30)
+    # Формируем информацию о платеже  
+    monthly_price = await tier.get_monthly_price_async(session)
+    total_price = monthly_price * (duration_days / 30)
     payment_info = f"Тестовый платеж {total_price:,.0f} ₸ за {tier.get_russian_name()}"
     
     # Создаем/обновляем подписку
@@ -225,7 +229,7 @@ async def quick_upgrade(callback: CallbackQuery, session: AsyncSession):
     
     # Обновляем на месяц по умолчанию
     duration_days = 30
-    total_price = tier.get_monthly_price()
+    total_price = await tier.get_monthly_price_async(session)
     
     payment_info = f"Быстрый апгрейд {total_price:,} ₸"
     
@@ -253,7 +257,7 @@ async def quick_upgrade(callback: CallbackQuery, session: AsyncSession):
 
 
 @subscription_router.callback_query(F.data == "view_all_tiers")
-async def view_all_tiers(callback: CallbackQuery):
+async def view_all_tiers(callback: CallbackQuery, session: AsyncSession):
     """Показать сравнение всех тарифов"""
     message = "📋 <b>Сравнение тарифов</b>\n\n"
     
@@ -261,8 +265,10 @@ async def view_all_tiers(callback: CallbackQuery):
         message += f"🎯 <b>{tier.get_russian_name()}</b>\n"
         message += f"   🏠 Адреса: {tier.get_address_limit()}\n"
         
-        if tier.get_monthly_price() > 0:
-            message += f"   💰 {tier.get_monthly_price():,} ₸/мес\n"
+        # Получаем актуальную цену из базы данных
+        monthly_price = await tier.get_monthly_price_async(session)
+        if monthly_price > 0:
+            message += f"   💰 {monthly_price:,} ₸/мес\n"
         else:
             message += f"   💰 Бесплатно\n"
         
@@ -282,7 +288,7 @@ async def view_all_tiers(callback: CallbackQuery):
 
 
 @subscription_router.callback_query(F.data.startswith("select_tier:"))
-async def select_tier_from_comparison(callback: CallbackQuery, state: FSMContext):
+async def select_tier_from_comparison(callback: CallbackQuery, state: FSMContext, session: AsyncSession):
     """Выбор тарифа из сравнительной таблицы"""
     tier_value = callback.data.split(":")[1]
     tier = SubscriptionTier(tier_value)
@@ -290,9 +296,12 @@ async def select_tier_from_comparison(callback: CallbackQuery, state: FSMContext
     await state.update_data(selected_tier=tier)
     await state.set_state(SubscriptionStates.selecting_duration)
     
+    # Получаем актуальную цену из базы данных
+    monthly_price = await tier.get_monthly_price_async(session)
+    
     message = f"⏰ <b>Выбрать срок подписки</b>\n\n"
     message += f"🎯 <b>Тариф:</b> {tier.get_russian_name()}\n"
-    message += f"💰 <b>Стоимость:</b> {tier.get_monthly_price():,} ₸/мес"
+    message += f"💰 <b>Стоимость:</b> {monthly_price:,} ₸/мес"
     
     keyboard = get_subscription_duration_keyboard()
     

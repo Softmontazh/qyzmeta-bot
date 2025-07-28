@@ -3,14 +3,7 @@
 **Цифровая экосистема для ЖКХ Казахстана**
 
 [![Telegram Bot](https://img.shields.io/badge/Telegram-Bot-blue?logo=telegram)](https://t.me/qyzmetabot)
-[![Made in Kazakhs## 💰 Система подписок и монетизацииan](https:/## 📖 Д## 📖 Документация
-
-- **[DATABASE_MODELS.md](docs/DATABASE_MODELS.md)** — Полное описание схемы БД
-- **[ROLES_SYSTEM_DOCUMENTATION.md](docs/ROLES_SYSTEM_DOCUMENTATION.md)** — Система ролей и доступа
-- **[PARTNER_SYSTEM_GUIDE.md](docs/PARTNER_SYSTEM_GUIDE.md)** — Руководство по партнерской системе
-- **[SERVICE_PROVIDERS_DOCUMENTATION.md](docs/SERVICE_PROVIDERS_DOCUMENTATION.md)** — Документация по поставщикам услуг
-- **[BUS_MEDIA_INTEGRATION_REPORT.md](docs/BUS_MEDIA_INTEGRATION_REPORT.md)** — Уникальная система медиафайлов
-- **[SUBSCRIPTION_SYSTEM_GUIDE.md](docs/SUBSCRIPTION_SYSTEM_GUIDE.md)** — Система подписок и монетизацииация
+[![Made in Kazakhstan](https:/## 📖 Документация
 
 - **[DATABASE_MODELS.md](docs/DATABASE_MODELS.md)** — Полное описание схемы БД
 - **[ROLES_SYSTEM_DOCUMENTATION.md](docs/ROLES_SYSTEM_DOCUMENTATION.md)** — Система ролей и доступа
@@ -254,18 +247,28 @@ python-dotenv==1.0.1     # Переменные окружения
 - **🎯 Автоматическое продление подписок**
 - **📱 Мобильное приложение для партнеров**
 - **🤖 AI-помощник для категоризации заявок**
-- **📊 Система финансовой отчетности**
-- **🔄 Интеграция с 1C**
-- **🌐 Мультиязычность** (каз/eng)
 
 ### Q4 2025 (Перспективы)
 - **🏢 Корпоративные тарифы для УК**
 - **📊 Business Intelligence дашборды**
 - **🌐 API для внешних интеграций**
 - **🎁 Промокоды и реферальная программа**
-- ** ИИ-помощник для классификации заявок**
-- **📈 Предиктивная аналитика**
-- **🌍 Расширение на рынки СНГ**
+- **Расширенная система ролей**
+
+### Q3 2025 🔄
+- Мобильное приложение для исполнителей
+- Интеграция с платежными системами
+- API для внешних систем
+
+### Q3 2025 📋
+- Система финансовой отчетности
+- Интеграция с 1C
+- Мультиязычность (каз/eng)
+
+### Q4 2025 🚀
+- ИИ-помощник для классификации заявок
+- Предиктивная аналитика
+- Расширение на рынки СНГ
 
 ## 📞 Техническая поддержка
 

@@ -193,7 +193,7 @@ class SubscriptionService:
         return await orm_expire_overdue_subscriptions(session)
     
     @staticmethod
-    def get_upgrade_suggestions(current_tier: SubscriptionTier) -> List[Dict]:
+    async def get_upgrade_suggestions(session: AsyncSession, current_tier: SubscriptionTier) -> List[Dict]:
         """Получить предложения по апгрейду тарифа"""
         suggestions = []
         
@@ -202,11 +202,14 @@ class SubscriptionService:
         
         for tier in SubscriptionTier:
             if tier.get_address_limit() > current_limit:
+                # Получаем актуальную цену из базы данных
+                monthly_price = await tier.get_monthly_price_async(session)
+                
                 suggestions.append({
                     "tier": tier,
                     "name": tier.get_russian_name(),
                     "address_limit": tier.get_address_limit(),
-                    "monthly_price": tier.get_monthly_price(),
+                    "monthly_price": monthly_price,
                     "benefits": SubscriptionService._get_tier_benefits(tier)
                 })
         

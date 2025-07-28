@@ -85,7 +85,7 @@ async def orm_create_price(
     )
     
     session.add(new_price)
-    await session.commit()
+    await session.flush()  # Flush вместо commit
     await session.refresh(new_price)
     
     return new_price
@@ -170,7 +170,7 @@ async def orm_deactivate_all_prices(session: AsyncSession) -> int:
     ).values(is_active=False)
     
     result = await session.execute(stmt)
-    await session.commit()
+    await session.flush()  # Flush вместо commit
     
     return result.rowcount
 
